@@ -1,12 +1,13 @@
 #
-# Makefile for stepps2 STAN simulations.
-#
+# Makefile for STEPPS calibration model
+# 
 
 #COMP: INTEL, GNU
 #COMP = INTEL
 COMP = GNU
 
-STAN     ?= $(STEPPS2)/opt/stan210
+#STAN     ?= $(STEPPS2)/opt/stan210
+STAN     ?= $(HOME)/Documents/paleon/stepps2/opt/stan210
 STANC    ?= $(STAN)/bin/stanc
 
 ifeq ($(COMP), GNU)

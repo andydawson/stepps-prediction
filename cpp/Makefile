@@ -1,8 +1,9 @@
 
-STEPPS2 ?= $(HOME)/Documents/paleon/stepps2
+PREDICTION ?= $(HOME)/Documents/projects/stepps-prediction
 
-include $(STEPPS2)/Makefile210.inc
+include $(PREDICTION)/Makefile210.inc
+#include $(PREDICTION)/Makefile240.inc
 
-all: pred.exe
+all: pred_od_mpp.exe
 
 
