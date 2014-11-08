@@ -1,0 +1,6 @@
+#CXXFLAGS = -O3 -msse4a -fopenmp
+#CXXFLAGS = -g
+#CXXFLAGS = -pg
+
+# using multiple threads does nasty things to print statements
+CXXFLAGS = -O3 -fopenmp -DNDEBUG
