@@ -75,7 +75,7 @@ parameters {
   real<lower=0, upper=20> ksi;   
 
   vector<lower=0,upper=100>[W] sigma;
-  vector<lower=0>[W] lambda;
+  vector<lower=0, upper=2>[W] lambda;
 
   vector[W] mu;
   vector[T] mu_t[W];
@@ -135,7 +135,8 @@ model {
 
 
     // spatially-varying mean
-    alpha_s[k] ~ multi_normal_prec(zeros, 1/eta2[k] * C_s_inv[k]);  
+    // alpha_s[k] ~ multi_normal_prec(zeros, 1/eta2[k] * C_s_inv[k]);  
+    alpha_s[k] ~ multi_normal_cholesky(zeros, eta2[k] * C_s_L[k]);  
     
     Halpha_s <- c_s[k] * (C_s_inv[k] * alpha_s[k]);
     for (i in 1:N){

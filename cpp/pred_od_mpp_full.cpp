@@ -254,60 +254,60 @@ public:
         P = vals_r__[pos__++];
 
         // validate data
-        try { 
+        try {
             check_greater_or_equal(function__,K,0,"K");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of K: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,N,0,"N");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of N: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,T,0,"T");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of T: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,N_knots,0,"N_knots");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of N_knots: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,N_cores,0,"N_cores");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of N_cores: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,rho,0,"rho");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of rho: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,eta,0,"eta");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of eta: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,gamma,0,"gamma");
             check_less_or_equal(function__,gamma,1,"gamma");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of gamma: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,psi,0,"psi");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of psi: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,phi,0,"phi");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of phi: ") + std::string(e.what()));
         };
-        try { 
+        try {
             check_greater_or_equal(function__,N_p,0,"N_p");
-        } catch (std::domain_error& e) { 
+        } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of N_p: ") + std::string(e.what()));
         };
         W = int(0);
@@ -374,7 +374,7 @@ public:
       c_s.resize(W);
       C_s_L.resize(W);
       C_s_inv.resize(W);
-      
+
       for (int k = 0; k < W; ++k) {
 	C_s[k] = exp(-d_knots.array() / rho[k]).matrix();
 
@@ -567,7 +567,7 @@ public:
       return lp;
     }
 
-    double normal_log_double(const double y, const double mu, const double sigma) const { 
+    double normal_log_double(const double y, const double mu, const double sigma, const int sigma_fixed) const {
       double lp = 0.0;
       double inv_sigma = 1.0/sigma;
       double log_sigma = log(sigma);
@@ -576,7 +576,10 @@ public:
       const double y_minus_mu_over_sigma_squared = y_minus_mu_over_sigma * y_minus_mu_over_sigma;
 
       lp -= 0.5 * y_minus_mu_over_sigma_squared;
-      lp -= log_sigma;
+
+      if (sigma_fixed != 1){
+	lp -= log_sigma;
+      }
 
       return lp;
     }
@@ -586,6 +589,9 @@ public:
 					    const matrix_d& L) const {
 
       double lp = 0.0;
+      
+      //tried adding this line, still wrong...
+      //lp -= log(sqrt(2 * pi() )) * y.rows();
 
       vector_d L_log_diag = L.diagonal().array().log().matrix();
       lp -= sum(L_log_diag);
@@ -596,6 +602,40 @@ public:
 
       return lp;
     }
+
+   // template <bool propto,
+   //           typename T_y, typename T_loc, typename T_covar>
+   //  typename boost::math::tools::promote_args<T_y,T_loc,T_covar>::type
+   //  multi_normal_log(const Eigen::Matrix<T_y,Eigen::Dynamic,1>& y,
+   //                   const Eigen::Matrix<T_loc,Eigen::Dynamic,1>& mu,
+   //                   const Eigen::Matrix<T_covar,Eigen::Dynamic,Eigen::Dynamic>& Sigma) {
+   //    static const char* function = "stan::prob::multi_normal_log(%1%)";
+   //    typename boost::math::tools::promote_args<T_y,T_loc,T_covar>::type lp(0.0);
+      
+   //    double multi_normal_log_double(const vector_d& y,
+   // 				     const vector_d& mu, 
+   // 				     const matrix_d& Sigma) const {
+
+   //    using stan::math::dot_product;
+   //    using stan::math::mdivide_left_spd;
+   //    using stan::math::log_determinant;
+      
+   //    //lp += NEG_LOG_SQRT_TWO_PI * y.rows();
+   //    lp -= 0.5 * log_determinant(Sigma);
+
+   //    if (include_summand<propto,T_y,T_loc,T_covar>::value) {
+   //      Eigen::Matrix<typename 
+   //          boost::math::tools::promote_args<T_y,T_loc>::type,
+   //          Eigen::Dynamic, 1> y_minus_mu(y.size());
+   //      for (int i = 0; i < y.size(); i++)
+   //        y_minus_mu(i) = y(i)-mu(i);
+   //      Eigen::Matrix<typename 
+   //          boost::math::tools::promote_args<T_covar,T_loc,T_y>::type,
+   //          Eigen::Dynamic, 1> Sinv_y_minus_mu(mdivide_left_spd(Sigma,y_minus_mu));
+   //      lp -= 0.5 * dot_product(y_minus_mu,Sinv_y_minus_mu);
+   //    }
+   //    return lp;
+   //  }
 
 
     /////////////////////////////////////////////////////////////////////////////
@@ -676,19 +716,24 @@ public:
       	  g[k] = in.vector_constrain((N * T));
       }
 
+      std::cout << "LP after constraints : " << lp << std::endl;
+
+
       //
       // compute log probability
       //
 
       // priors
-      lp += normal_log_double(mu, 0, 2);
-
-      for (int k; k<W; ++k){
-      	lp += normal_log_double(mu_t[k][1], 0.0, 20.0); 
-      }
-
+      lp += normal_log_double(mu, 0, 20);
 
       std::cout << "LP after mu prior : " << lp << std::endl;
+
+      for (int k=0; k<W; ++k){
+      	lp += normal_log_double(mu_t[k][0], 0.0, 20.0, 1);
+	std::cout << "mu_t[k][0]" << normal_log_double(mu_t[k][0], 0.0, 20.0, 1) << std::endl;
+      }
+
+      std::cout << "LP after mu_t[k][0] : " << lp << std::endl;
 
       vector<double> lambda_inv(W);
       vector<double> sigma2(W);
@@ -707,7 +752,7 @@ public:
       for (int k=0; k<W; ++k) {
       	Q_s[k] = (- lambda_inv[k] * d_knots.array()).exp().matrix();
       	q_s[k] = (- lambda_inv[k] * d_inter.array()).exp().matrix();
-      	llt_Qs = Q_s[k].llt(); 
+      	llt_Qs = Q_s[k].llt();
       	Q_s_L[k] = llt_Qs.matrixL();
       	Q_s_inv[k] = llt_Qs.solve(Eigen::MatrixXd::Identity(N_knots,N_knots));
       }
@@ -715,61 +760,78 @@ public:
 
       double cvar;
       double qvar;
-      
+
       vector_d Halpha_s;
       vector_d Halpha_t;
-      vector<vector_d> qQinv_alpha(T-1);
+      vector<vector_d> qQinv_alpha(T);
 
       row_vector_d c_i;
       row_vector_d q_i;
-      vector_d sqrtvar;
+      vector_d sqrtvar(N*T);
 
       vector<vector_d> mu_g(W);
 
       matrix_d         exp_g(N*T, W);
 
-      for (int k; k<W; ++k){
-      	lp += multi_normal_cholesky_log_double(alpha_s[k], zeros, eta2[k] * C_s_L[k]);
+      for (int k = 0; k<W; ++k){
+	std::cout<<"k = "<<k<<std::endl;
+      	lp += multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k]);
 
-      	Halpha_s = c_s[k] * ( C_s_inv[k] * alpha_s[k] ); 
-	
-      	for (int i; i<N; ++i){
-      	  for (int t; t<T; ++t){
+	std::cout << "LP after alpha_s[k] : " << lp << std::endl;
+
+      	Halpha_s = c_s[k] * ( C_s_inv[k] * alpha_s[k] );
+
+        mu_g[k].resize(N*T);
+      	for (int i = 0; i<N; ++i){
+      	  for (int t = 0; t<T; ++t){
       	    mu_g[k][i * T + t] = Halpha_s[i];
       	  }
       	}
 
-      	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + 1], zeros, sigma2[k] * Q_s_L[k]);
-      	for (int t=1; t<(T-1); ++t){
-      	  lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], zeros, sigma2[k] * Q_s_L[k]);
-      	  qQinv_alpha[t] = q_s[k] * Q_s_inv[k] * alpha_t[k * (T-1) + t];
+	// first nonzero alpha_t 
+      	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma2[k] * Q_s_L[k]);
+	std::cout << "LP after alpha_t[k] : " << lp << std::endl;
+
+	for (int t=1; t<(T-1); ++t){
+	//        for (int t=1; t<T; ++t){
+          // XXX: something weird here...
+          lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma2[k] * Q_s_L[k]);
       	}
+
+	for (int t=0; t<(T-1); ++t){
+	  qQinv_alpha[t] = q_s[k] * Q_s_inv[k] * alpha_t[k * (T-1) + t];
+	}
+
       	// time-varying mean
       	for (int t=1; t<T; ++t){
-      	  lp += normal_log_double(mu_t[k][t], mu_t[k][t-1], ksi);
-      	}    
+      	  lp += normal_log_double(mu_t[k][t], mu_t[k][t-1], ksi,  0);
+      	}
 
-      	for (int i; i<N; ++i){
+	std::cout << "LP after mu_t[k] : " << lp << std::endl;
+
+      	for (int i = 0; i<N; ++i){
       	  c_i  = c_s[k].row(i);
       	  cvar = eta2[k] * c_i * C_s_inv[k] * c_i.transpose();
 
       	  q_i  = q_s[k].row(i);
       	  qvar = sigma2[k] * q_i * Q_s_inv[k] * q_i.transpose();
-      
-      	  mu_g[k][i * T + 1] = mu[k] + mu_t[k][1] + mu_g[k][i * T + 1];
-      	  sqrtvar[i * T + 1] = sqrt(eta2[k] - cvar);
 
-      	  for (int t=1; t<T; ++i){
+      	  mu_g[k][i * T] = mu[k] + mu_t[k][0] + mu_g[k][i * T];
+      	  sqrtvar[i * T] = sqrt(eta2[k] - cvar);
+
+      	  for (int t=1; t<T; ++t){
       	    mu_g[k][i * T + t] = mu[k] + mu_t[k][t] + mu_g[k][i * T + t] +  qQinv_alpha[t-1][i];
-      	    sqrtvar[i * T + t] = sqrt(eta2[k] - cvar + sigma2[k] - qvar);	
+      	    sqrtvar[i * T + t] = sqrt(eta2[k] - cvar + sigma2[k] - qvar);
       	  }
       	}
-    
-      	for (int i; i<N*T; ++i){
-      	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrtvar[i]);
+
+      	for (int i = 0; i<N*T; ++i){
+      	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrtvar[i], 0);
       	}
-	
-    
+
+	std::cout << "LP after g[k] : " << lp << std::endl;
+
+
       // //  // std::cout << "LP after alpha[k]: " <<  multi_normal_cholesky_log_double(alpha[k], zeros, C_star_L[k]) << std::endl;
 
       	exp_g.col(k) = exp(g[k]);
@@ -817,7 +879,7 @@ public:
       	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
       	}
       }
-      std::cout<<"Made it here! " << std::endl;      
+      std::cout<<"Made it here! " << std::endl;
       // adding these lines causes segfault...
       vector<int> N_grains(N_cores*T);
       vector_d    A(N_cores*T);
@@ -863,7 +925,7 @@ public:
 
       for (int i=0; i<params_r.size(); i++) evec_params_r[i] = params_r[i];
       double lp = log_prob_grad<propto, jacobian>(evec_params_r, evec_gradient, pstream);
-      
+
       return lp;
     }
 
@@ -971,7 +1033,7 @@ public:
     //     // transformed parameters
 
     //     // initialized transformed params to avoid seg fault on val access
-        
+
 
     //     // validate transformed parameters
 
@@ -1622,4 +1684,3 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
 }
-
