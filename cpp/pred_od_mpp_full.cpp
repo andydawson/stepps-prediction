@@ -584,17 +584,33 @@ public:
       return lp;
     }
 
+    // double normal_log_double_const_var(const double y, const double mu, const double sigma) const { 
+    //   double lp = 0.0;
+    //   double inv_sigma = 1.0/sigma;
+    //   //double log_sigma = log(sigma);
+
+    //   const double y_minus_mu_over_sigma = (y - mu) * inv_sigma;
+    //   const double y_minus_mu_over_sigma_squared = y_minus_mu_over_sigma * y_minus_mu_over_sigma;
+
+    //   lp -= 0.5 * y_minus_mu_over_sigma_squared;
+    //   //lp -= log_sigma;
+
+    //   return lp;
+    // }
+
     double multi_normal_cholesky_log_double(const vector_d& y,
 					    const vector_d& mu,
-					    const matrix_d& L) const {
+					    const matrix_d& L, bool const_matrix=false) const {
 
       double lp = 0.0;
-      
+
       //tried adding this line, still wrong...
       //lp -= log(sqrt(2 * pi() )) * y.rows();
 
-      vector_d L_log_diag = L.diagonal().array().log().matrix();
-      lp -= sum(L_log_diag);
+      if (!const_matrix) {
+        vector_d L_log_diag = L.diagonal().array().log().matrix();
+        lp -= sum(L_log_diag);
+      }
 
       vector_d y_minus_mu = y.array() - mu.array();
       vector_d half = mdivide_left_tri_low(L, y_minus_mu);
@@ -603,40 +619,26 @@ public:
       return lp;
     }
 
-   // template <bool propto,
-   //           typename T_y, typename T_loc, typename T_covar>
-   //  typename boost::math::tools::promote_args<T_y,T_loc,T_covar>::type
-   //  multi_normal_log(const Eigen::Matrix<T_y,Eigen::Dynamic,1>& y,
-   //                   const Eigen::Matrix<T_loc,Eigen::Dynamic,1>& mu,
-   //                   const Eigen::Matrix<T_covar,Eigen::Dynamic,Eigen::Dynamic>& Sigma) {
-   //    static const char* function = "stan::prob::multi_normal_log(%1%)";
-   //    typename boost::math::tools::promote_args<T_y,T_loc,T_covar>::type lp(0.0);
-      
-   //    double multi_normal_log_double(const vector_d& y,
-   // 				     const vector_d& mu, 
-   // 				     const matrix_d& Sigma) const {
+    double multi_normal_prec_log_double(const vector_d& y,
+                                        const vector_d& mu,
+                                        const matrix_d& Sigma) const {
 
-   //    using stan::math::dot_product;
-   //    using stan::math::mdivide_left_spd;
-   //    using stan::math::log_determinant;
-      
-   //    //lp += NEG_LOG_SQRT_TWO_PI * y.rows();
-   //    lp -= 0.5 * log_determinant(Sigma);
+      double lp = 0.0;
+      if (y.rows() == 0)
+        return lp;
 
-   //    if (include_summand<propto,T_y,T_loc,T_covar>::value) {
-   //      Eigen::Matrix<typename 
-   //          boost::math::tools::promote_args<T_y,T_loc>::type,
-   //          Eigen::Dynamic, 1> y_minus_mu(y.size());
-   //      for (int i = 0; i < y.size(); i++)
-   //        y_minus_mu(i) = y(i)-mu(i);
-   //      Eigen::Matrix<typename 
-   //          boost::math::tools::promote_args<T_covar,T_loc,T_y>::type,
-   //          Eigen::Dynamic, 1> Sinv_y_minus_mu(mdivide_left_spd(Sigma,y_minus_mu));
-   //      lp -= 0.5 * dot_product(y_minus_mu,Sinv_y_minus_mu);
-   //    }
-   //    return lp;
-   //  }
+      LDLT_factor<double,Eigen::Dynamic,Eigen::Dynamic> ldlt_Sigma(Sigma);
 
+      lp += 0.5*log_determinant_ldlt(ldlt_Sigma);
+
+      vector_d y_minus_mu(y.size());
+      for (int i = 0; i < y.size(); i++)
+        y_minus_mu(i) = y(i)-mu(i);
+
+      lp -= 0.5 * (y_minus_mu.transpose() * Sigma * y_minus_mu).trace();
+
+      return lp;
+    }
 
     /////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////
@@ -728,9 +730,13 @@ public:
 
       std::cout << "LP after mu prior : " << lp << std::endl;
 
+      double mut0_sd;
+      mut0_sd = 20.0;
+
       for (int k=0; k<W; ++k){
-      	lp += normal_log_double(mu_t[k][0], 0.0, 20.0, 1);
-	std::cout << "mu_t[k][0]" << normal_log_double(mu_t[k][0], 0.0, 20.0, 1) << std::endl;
+      	// lp += normal_log_double_const_var(mu_t[k][0], 0.0, mut0_sd);
+	lp += normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1);
+	std::cout << "mu_t[k][0]" << normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1) << std::endl;
       }
 
       std::cout << "LP after mu_t[k][0] : " << lp << std::endl;
@@ -761,25 +767,32 @@ public:
       double cvar;
       double qvar;
 
+      vector<matrix_d> H_s(W);
       vector_d Halpha_s;
       vector_d Halpha_t;
       vector<vector_d> qQinv_alpha(T);
 
       row_vector_d c_i;
       row_vector_d q_i;
-      vector_d sqrtvar(N*T);
+      vector<vector_d> var_g(W);
 
       vector<vector_d> mu_g(W);
 
       matrix_d         exp_g(N*T, W);
 
+      for (int k=0; k < W; ++k) {
+	var_g[k].resize(N*T);
+      }
+
       for (int k = 0; k<W; ++k){
 	std::cout<<"k = "<<k<<std::endl;
-      	lp += multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k]);
+      	lp += multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k], true);
 
-	std::cout << "LP after alpha_s[k] : " << lp << std::endl;
+        std::cout << "LP after alpha_s[k] : " << lp << " " << std::endl;
 
-      	Halpha_s = c_s[k] * ( C_s_inv[k] * alpha_s[k] );
+	H_s[k]   = c_s[k] * C_s_inv[k];
+	Halpha_s = H_s[k] * alpha_s[k];
+      	//Halpha_s = c_s[k] * ( C_s_inv[k] * alpha_s[k] );
 
         mu_g[k].resize(N*T);
       	for (int i = 0; i<N; ++i){
@@ -788,15 +801,17 @@ public:
       	  }
       	}
 
-	// first nonzero alpha_t 
-      	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma2[k] * Q_s_L[k]);
-	std::cout << "LP after alpha_t[k] : " << lp << std::endl;
+	// first nonzero alpha_t
+      	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
+	std::cout << "LP after alpha_t[k][0] : " << lp << std::endl;
 
 	for (int t=1; t<(T-1); ++t){
 	//        for (int t=1; t<T; ++t){
           // XXX: something weird here...
-          lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma2[k] * Q_s_L[k]);
+          lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
       	}
+
+	std::cout << "LP after alpha_t[k] : " << lp << std::endl;
 
 	for (int t=0; t<(T-1); ++t){
 	  qQinv_alpha[t] = q_s[k] * Q_s_inv[k] * alpha_t[k * (T-1) + t];
@@ -817,19 +832,21 @@ public:
       	  qvar = sigma2[k] * q_i * Q_s_inv[k] * q_i.transpose();
 
       	  mu_g[k][i * T] = mu[k] + mu_t[k][0] + mu_g[k][i * T];
-      	  sqrtvar[i * T] = sqrt(eta2[k] - cvar);
+      	  var_g[k][i * T] = eta2[k] - cvar;
 
       	  for (int t=1; t<T; ++t){
       	    mu_g[k][i * T + t] = mu[k] + mu_t[k][t] + mu_g[k][i * T + t] +  qQinv_alpha[t-1][i];
-      	    sqrtvar[i * T + t] = sqrt(eta2[k] - cvar + sigma2[k] - qvar);
+      	    var_g[k][i * T + t] = eta2[k] - cvar + sigma2[k] - qvar;
       	  }
       	}
 
       	for (int i = 0; i<N*T; ++i){
-      	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrtvar[i], 0);
+      	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 
 	std::cout << "LP after g[k] : " << lp << std::endl;
+	//std::cout << "g[k] : " << g[k] << std::endl;
+	// std::cout << "var_g[k] : " << var_g[k] << std::endl;
 
 
       // //  // std::cout << "LP after alpha[k]: " <<  multi_normal_cholesky_log_double(alpha[k], zeros, C_star_L[k]) << std::endl;
@@ -879,36 +896,163 @@ public:
       	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
       	}
       }
-      std::cout<<"Made it here! " << std::endl;
-      // adding these lines causes segfault...
+      
       vector<int> N_grains(N_cores*T);
       vector_d    A(N_cores*T);
       matrix_d    kappa(N_cores*T,K);
       vector<int> y_row_sum(N_cores*T);
 
-      // // XXX: omp?
-      // for (int i = 0; i < N_cores * T; ++i) {
-      // 	y_row_sum[i] = 0.0;
-      // 	for (int k = 0; k < K; ++k)
-      // 	  y_row_sum[i] += y[i][k];
+      // XXX: omp?
+      for (int i = 0; i < N_cores * T; ++i) {
+      	y_row_sum[i] = 0.0;
+      	for (int k = 0; k < K; ++k)
+      	  y_row_sum[i] += y[i][k];
 
-      // 	if (y_row_sum[i] > 0) {
-      // 	  for (int k = 0; k < K; ++k){
-      // 	    kappa(i,k) = phi(k) * r_new(i,k);
-      // 	  }
+      	if (y_row_sum[i] > 0) {
+      	  for (int k = 0; k < K; ++k){
+      	    kappa(i,k) = phi(k) * r_new(i,k);
+      	  }
 
-      // 	  A[i] = kappa.row(i).sum();
-      // 	  N_grains[i] = y_row_sum[i];
+      	  A[i] = kappa.row(i).sum();
+      	  N_grains[i] = y_row_sum[i];
 
-      // 	  lp += lgamma(N_grains[i] + 1.0) + lgamma(A[i]) - lgamma(N_grains[i] + A[i]);
-      // 	  for (int k = 0; k < K; ++k) {
-      // 	    lp += -lgamma(y[i][k] + 1) + lgamma(y[i][k] + kappa(i,k)) - lgamma(kappa(i,k));
-      // 	  }
-      // 	}
+      	  lp += lgamma(N_grains[i] + 1.0) + lgamma(A[i]) - lgamma(N_grains[i] + A[i]);
+      	  for (int k = 0; k < K; ++k) {
+      	    lp += -lgamma(y[i][k] + 1) + lgamma(y[i][k] + kappa(i,k)) - lgamma(kappa(i,k));
+      	  }
+      	}
 
-      // }
+      }
 
       gradient.fill(0.0);
+
+      for (int k=0; k<W; ++k)
+	for (int t=1; t<T; ++t)
+	  gradient[0] += -1 / ksi + pow(mu_t[k][t] - mu_t[k][t-1], 2) / ( ksi * ksi * ksi); 
+
+      gradient[0] = gradient[0] * ksi_ja + ksi_dj;
+
+      // partial of mu_t normal
+      int idx_mut;
+      //# pragma omp parallel for
+      for (int k=0; k<W; ++k) {
+	for (int t=1; t<T; ++t){
+	  idx_mut = 1 + 3*W + k*T + t;
+	  gradient[idx_mut] += - (mu_t[k][t] - mu_t[k][t-1]) / ( ksi * ksi );
+	  
+	  if (t<(T-1)){
+	    gradient[idx_mut] +=  (mu_t[k][t+1] - mu_t[k][t]) / ( ksi * ksi );
+	  }
+	}
+
+	// mu_t[k][0]
+	gradient[1 + 3*W + k*T] += - mu_t[k][0] / ( mut0_sd * mut0_sd );
+	gradient[1 + 3*W + k*T] += (mu_t[k][1] - mu_t[k][0]) / ( ksi * ksi );
+
+	// partial of g (wrt mu_t)
+      	for (int n=0; n<N; ++n){
+      	  for (int t=0; t<T; ++t){
+      	    double idx = n*T + t;
+      	    gradient[1 + 3*W + k*T + t] += (g[k](idx) - mu_g[k][idx]) / var_g[k][idx];
+      	  }
+      	} 
+
+      }
+
+      // partials of g normal
+      //#pragma omp parallel for
+      for (int k=0; k<W; ++k){
+      	for (int n=0; n<N; ++n){
+      	  for (int t=0; t<T; ++t){
+
+	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
+	    double B      = var_g[k][n*T+t];
+      	    double B2inv  = 1/(B*B);
+	    double AoverB = A/B;
+	    int idx_cell  = n*T+t;
+
+	    int idx_g        = 1 + W*3 + W*T + W*N_knots + W*(T-1)*N_knots + k*N*T + n*T + t;
+	    gradient[idx_g] -= AoverB;
+
+	    for (int v=0; v<N_knots; ++v){
+	      // for (int tp=0; tp<T; ++tp) {
+		int idx_alpha_s  = 1 + W*3 + W*T +  k*N_knots + v; 
+	        gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
+		
+		// gradient[idx_alpha] += AoverB * cCinv[k](n*T+t,v*T+tp); // alpha
+		//gradient[idx_alpha] += AoverB * ( cCinv[k](n*T+t,v*T+tp) - QQT_cCinv[k](n*T+t,v*T+t) ); // alpha
+		//}
+	    }
+
+      	  } // n
+      	} // t
+      } // k  
+
+  // partial of dirmult
+      #pragma omp parallel for
+      for (int k=0; k<W; ++k) {
+	for (int t=0; t<T; ++t) {
+	  for (int i=0; i<N_cores; ++i) {
+
+	    int si = i*T + t;
+	    int ci = (idx_cores[i]-1)*T + t;
+
+	    if (y_row_sum[si] > 0.0) {
+
+	      double dirmultp1 = -digamma(A[si] + N_grains[si]) + digamma(A[si]);
+	      double invsumw2 = 1 / (sum_w[si] * sum_w[si]);
+
+	      for (int m=0; m<K; ++m) {
+
+		double dirmultp2 = digamma(y[si][m] + kappa(si,m)) - digamma(kappa(si,m));
+		double out_sum_si_m = out_sum(si,m);
+
+		// this accumulates dkappa_itm
+		double dkappa = 0.0;
+		double drnew, dr;
+
+		for (int c=0; c<N; ++c) {
+
+		  int C = c*T + t;
+		  const double sumgp1 = 1 + sum_exp_g[C];
+		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
+
+		  double tmp22 = 0.0;
+
+		  for (int mp=0; mp<K; ++mp) {
+
+		    // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
+		    if (mp == m) {
+		      drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * invsumw2;
+		    } else {
+		      drnew = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * invsumw2  ;
+		    }
+
+		    // compute dr = \partial r_{ctm'} / \partial g{ctk}
+		    if (mp == K-1) {
+		      dr = -exp_g(C,k) * sumgp1inv2;
+		    } else if (mp == k) {
+		      dr = exp_g(C,mp) * (sumgp1 - exp_g(C,mp)) * sumgp1inv2;
+		    } else {
+		      dr = -exp_g(C,mp) * exp_g(C,k) * sumgp1inv2;
+		    }
+
+		    // accumulate dkappa
+		    dkappa += phi[m] * drnew * dr;
+
+		    // save (dirmultp1 + dirmultp2) * phi[m] * drnew * dr
+		    int idx = 1 + W*3 + W*T + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;//K + W*N_knots*T + k*N*T + c*T + t;
+		    gradient[idx] += (dirmultp1 + dirmultp2) * phi[m] * drnew * dr;
+		  } // mp
+
+		} // c
+
+	      } // m
+	    } // if
+	  } // i
+	} // t
+	
+      } // k
 
       std::cout<<"LP -----> " << lp << std::endl;
 
