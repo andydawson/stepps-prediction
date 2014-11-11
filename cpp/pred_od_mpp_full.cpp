@@ -83,6 +83,8 @@ private:
     static double const lambda_lb = 0;
     static double const lambda_ub = 2;
 
+    static double const mu_std = 20;
+
 public:
     pred_model(stan::io::var_context& context__,
         std::ostream* pstream__ = 0)
@@ -726,7 +728,7 @@ public:
       //
 
       // priors
-      lp += normal_log_double(mu, 0, 20);
+      lp += normal_log_double(mu, 0, mu_std);
 
       std::cout << "LP after mu prior : " << lp << std::endl;
 
@@ -768,6 +770,7 @@ public:
       double qvar;
 
       vector<matrix_d> H_s(W);
+      vector<matrix_d> H_t(W);
       vector_d Halpha_s;
       vector_d Halpha_t;
       vector<vector_d> qQinv_alpha(T);
@@ -800,21 +803,21 @@ public:
       	    mu_g[k][i * T + t] = Halpha_s[i];
       	  }
       	}
-
 	// first nonzero alpha_t
-      	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
+	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
 	std::cout << "LP after alpha_t[k][0] : " << lp << std::endl;
 
 	for (int t=1; t<(T-1); ++t){
-	//        for (int t=1; t<T; ++t){
-          // XXX: something weird here...
-          lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
+    
+	  lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
       	}
 
 	std::cout << "LP after alpha_t[k] : " << lp << std::endl;
 
+
+	H_t[k] = q_s[k] * Q_s_inv[k];
 	for (int t=0; t<(T-1); ++t){
-	  qQinv_alpha[t] = q_s[k] * Q_s_inv[k] * alpha_t[k * (T-1) + t];
+	  qQinv_alpha[t] = H_t[k] * alpha_t[k * (T-1) + t];
 	}
 
       	// time-varying mean
@@ -959,6 +962,18 @@ public:
 
       }
 
+      // partial of MVN for alpha_s wrt to alpha_s
+      for (int k=0; k<W; ++k){
+	for (int v=0; v<N_knots; ++v){
+	    int idx_alpha_s = 1 + W*3 + W*T + k*N_knots + v;
+	    gradient[idx_alpha_s] -= ( 1 / eta2[k] * C_s_inv[k] * alpha_s[k])[v]; //mvn wrt alpha
+	}
+      }
+
+      for (int k=0; k<W; ++k){
+	gradient[1 + 2*W + k] -=  mu[k] / (mu_std * mu_std);
+      }
+
       // partials of g normal
       //#pragma omp parallel for
       for (int k=0; k<W; ++k){
@@ -971,22 +986,45 @@ public:
 	    double AoverB = A/B;
 	    int idx_cell  = n*T+t;
 
+
+	    gradient[1 + 2*W + k] += AoverB;
+
 	    int idx_g        = 1 + W*3 + W*T + W*N_knots + W*(T-1)*N_knots + k*N*T + n*T + t;
 	    gradient[idx_g] -= AoverB;
 
 	    for (int v=0; v<N_knots; ++v){
 	      // for (int tp=0; tp<T; ++tp) {
 		int idx_alpha_s  = 1 + W*3 + W*T +  k*N_knots + v; 
-	        gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
+		gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
 		
-		// gradient[idx_alpha] += AoverB * cCinv[k](n*T+t,v*T+tp); // alpha
-		//gradient[idx_alpha] += AoverB * ( cCinv[k](n*T+t,v*T+tp) - QQT_cCinv[k](n*T+t,v*T+t) ); // alpha
-		//}
+		// int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
+		// gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
 	    }
 
       	  } // n
       	} // t
       } // k  
+
+
+ // partials of g normal
+      //#pragma omp parallel for
+      for (int k=0; k<W; ++k){
+      	for (int n=0; n<N; ++n){
+      	  for (int t=0; t<(T-1); ++t){
+
+	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
+	    double B      = var_g[k][n*T+t];
+      	    double B2inv  = 1/(B*B);
+	    double AoverB = A/B;
+	    for (int v=0; v<N_knots; ++v){
+	      //int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
+	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
+	      //gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
+	    }
+      	  } // n
+      	} // t
+      } // k  
+
 
   // partial of dirmult
       #pragma omp parallel for
