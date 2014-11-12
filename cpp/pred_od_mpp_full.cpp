@@ -767,7 +767,7 @@ public:
 
 
       double cvar;
-      double qvar;
+      vector<vector_d> qvar(W);
 
       vector<matrix_d> H_s(W);
       vector<matrix_d> H_t(W);
@@ -785,6 +785,7 @@ public:
 
       for (int k=0; k < W; ++k) {
 	var_g[k].resize(N*T);
+	qvar[k].resize(N*T);
       }
 
       for (int k = 0; k<W; ++k){
@@ -804,12 +805,12 @@ public:
       	  }
       	}
 	// first nonzero alpha_t
-	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
+	//lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
 	std::cout << "LP after alpha_t[k][0] : " << lp << std::endl;
 
 	for (int t=1; t<(T-1); ++t){
     
-	  lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
+	  //lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
       	}
 
 	std::cout << "LP after alpha_t[k] : " << lp << std::endl;
@@ -832,19 +833,19 @@ public:
       	  cvar = eta2[k] * c_i * C_s_inv[k] * c_i.transpose();
 
       	  q_i  = q_s[k].row(i);
-      	  qvar = sigma2[k] * q_i * Q_s_inv[k] * q_i.transpose();
+      	  qvar[k][i] = q_i * Q_s_inv[k] * q_i.transpose();
 
       	  mu_g[k][i * T] = mu[k] + mu_t[k][0] + mu_g[k][i * T];
       	  var_g[k][i * T] = eta2[k] - cvar;
 
       	  for (int t=1; t<T; ++t){
       	    mu_g[k][i * T + t] = mu[k] + mu_t[k][t] + mu_g[k][i * T + t] +  qQinv_alpha[t-1][i];
-      	    var_g[k][i * T + t] = eta2[k] - cvar + sigma2[k] - qvar;
+      	    var_g[k][i * T + t] = eta2[k] - cvar + sigma2[k] - sigma2[k] * qvar[k][i];
       	  }
       	}
 
       	for (int i = 0; i<N*T; ++i){
-      	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 
 	std::cout << "LP after g[k] : " << lp << std::endl;
@@ -963,13 +964,15 @@ public:
       }
 
       // partial of MVN for alpha_s wrt to alpha_s
-      for (int k=0; k<W; ++k){
-	for (int v=0; v<N_knots; ++v){
-	    int idx_alpha_s = 1 + W*3 + W*T + k*N_knots + v;
-	    gradient[idx_alpha_s] -= ( 1 / eta2[k] * C_s_inv[k] * alpha_s[k])[v]; //mvn wrt alpha
+      for (int k=0; k<W; ++k) {
+	vector_d tmp = 1 / eta2[k] * C_s_inv[k] * alpha_s[k];
+	for (int v=0; v<N_knots; ++v) {
+	  int idx_alpha_s = 1 + W*3 + W*T + k*N_knots + v;
+	  gradient[idx_alpha_s] -= tmp[v];
 	}
       }
-
+      
+      // partial of mu prior
       for (int k=0; k<W; ++k){
 	gradient[1 + 2*W + k] -=  mu[k] / (mu_std * mu_std);
       }
@@ -990,21 +993,27 @@ public:
 	    gradient[1 + 2*W + k] += AoverB;
 
 	    int idx_g        = 1 + W*3 + W*T + W*N_knots + W*(T-1)*N_knots + k*N*T + n*T + t;
+	    
+	    // wrt g
 	    gradient[idx_g] -= AoverB;
 
+	    // wrt sigma
+	    if (t > 0){
+	      gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
+	    }
+
 	    for (int v=0; v<N_knots; ++v){
-	      // for (int tp=0; tp<T; ++tp) {
-		int idx_alpha_s  = 1 + W*3 + W*T +  k*N_knots + v; 
-		gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
-		
-		// int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
-		// gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
+	      int idx_alpha_s  = 1 + W*3 + W*T +  k*N_knots + v; 
+	      // wrt alpha_s
+	      gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
 	    }
 
       	  } // n
       	} // t
-      } // k  
 
+	gradient[1 + k] += gradient[1 + k] * sigma_ja[k] + sigma_dj[k];
+
+      } // k  
 
  // partials of g normal
       //#pragma omp parallel for
@@ -1012,18 +1021,51 @@ public:
       	for (int n=0; n<N; ++n){
       	  for (int t=0; t<(T-1); ++t){
 
-	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
-	    double B      = var_g[k][n*T+t];
+	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
+	    double B      = var_g[k][n*T+t+1];
       	    double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
 	    for (int v=0; v<N_knots; ++v){
-	      //int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
-	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
-	      //gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
+	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
+	      //int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
+	      gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
 	    }
       	  } // n
       	} // t
       } // k  
+
+      // partial of MVN for alpha_t (wrt alpha_t)
+      vector_d Qinv_alphat_next;
+      vector_d Qinv_alphat_now;
+      vector_d Qinv_alphat_first;
+       for (int k=0; k<W; ++k){
+      	for (int n=0; n<N; ++n){
+	  for (int t=1; t<(T-1); ++t){
+
+	    if (t < T-2) {
+	      Qinv_alphat_now = 1 / sigma2[k] * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
+	    } // else if (t>1) {
+	    //   //Qinv_alphat_now = 1 / sigma2[k] * Q_s_inv[k] * (alpha_t[k*(T-1)+t+1] - alpha_t[k*(T-1)+t]);
+	    // } else if (t == 1) {
+	    //   //Qinv_alphat_first = 1 / sigma2[k] * Q_s_inv[k] * (alpha_t[k*(T-1)+t]);
+	    // }
+
+	    for (int v=0; v<N_knots; ++v){
+	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
+	      //int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
+	      //gradient[idx_alpha_t] += Qinv_alphat_next[v];
+	      
+	      if (t < T-2) {
+		gradient[idx_alpha_t] += Qinv_alphat_now[v];
+	      } // else if (t>1){
+	      // 	//gradient[idx_alpha_t] -= Qinv_alphat_now[v];
+	      // } else if (t==1) {
+	      // 	//gradient[idx_alpha_t] -= Qinv_alphat_first[v];
+	      // }
+	    }
+	  }
+	}
+       }
 
 
   // partial of dirmult
