@@ -602,9 +602,9 @@ public:
             Eigen::Matrix<T__,1,Eigen::Dynamic>  q_i(N_knots);
             (void) q_i;   // dummy to suppress unused var warning
             stan::math::fill(q_i,DUMMY_VAR__);
-            Eigen::Matrix<T__,Eigen::Dynamic,1>  sqrtvar((N * T));
-            (void) sqrtvar;   // dummy to suppress unused var warning
-            stan::math::fill(sqrtvar,DUMMY_VAR__);
+            Eigen::Matrix<T__,Eigen::Dynamic,1>  var_g((N * T));
+            (void) var_g;   // dummy to suppress unused var warning
+            stan::math::fill(var_g,DUMMY_VAR__);
             stan::math::initialize(mu_g, DUMMY_VAR__);
             stan::math::initialize(sum_exp_g, DUMMY_VAR__);
             stan::math::initialize(r, DUMMY_VAR__);
@@ -620,7 +620,7 @@ public:
             stan::math::initialize(qQinv_alpha, DUMMY_VAR__);
             stan::math::initialize(c_i, DUMMY_VAR__);
             stan::math::initialize(q_i, DUMMY_VAR__);
-            stan::math::initialize(sqrtvar, DUMMY_VAR__);
+            stan::math::initialize(var_g, DUMMY_VAR__);
             lp_accum__.add(normal_log<propto__>(mu, 0, 20));
 
 	    std::cout << "LP after mu prior : " << lp_accum__.sum() << std::endl;
@@ -642,9 +642,9 @@ public:
             }
             for (int k = 1; k <= W; ++k) {
 	      	std::cout<<"k = "<<k<<std::endl;
-                //lp_accum__.add(multi_normal_prec_log<propto__>(get_base1(alpha_s,k,"alpha_s",1), zeros, multiply((1 / get_base1(eta2,k,"eta2",1)),get_base1(C_s_inv,k,"C_s_inv",1))));
-                lp_accum__.add(multi_normal_cholesky_log<propto__>(get_base1(alpha_s,k,"alpha_s",1), zeros, multiply(get_base1(eta,k,"eta",1),get_base1(C_s_L,k,"C_s_L",1))));
-
+                lp_accum__.add(multi_normal_prec_log<propto__>(get_base1(alpha_s,k,"alpha_s",1), zeros, multiply((1 / get_base1(eta2,k,"eta2",1)),get_base1(C_s_inv,k,"C_s_inv",1))));
+                //lp_accum__.add(multi_normal_cholesky_log<propto__>(get_base1(alpha_s,k,"alpha_s",1), zeros, multiply(get_base1(eta,k,"eta",1),get_base1(C_s_L,k,"C_s_L",1))));
+		//std::cout << "C_s_L[k] : " << C_s_L[k-1] << std::endl;
 		std::cout << "LP after alpha_s[k] : " << lp_accum__.sum() << std::endl;
 
                 stan::math::assign(Halpha_s, multiply(get_base1(c_s,k,"c_s",1),multiply(get_base1(C_s_inv,k,"C_s_inv",1),get_base1(alpha_s,k,"alpha_s",1))));
@@ -654,26 +654,13 @@ public:
                     }
                 }
                 stan::math::assign(get_base1_lhs(mu_g,k,"mu_g",1), get_base1(mu_g,k,"mu_g",1));
-                if (pstream__) {
-                    stan_print(pstream__,"Here");
-                    *pstream__ << std::endl;
-                }
                 lp_accum__.add(multi_normal_prec_log<propto__>(get_base1(alpha_t,(((k - 1) * (T - 1)) + 1),"alpha_t",1), zeros, multiply((1 / get_base1(sigma2,k,"sigma2",1)),get_base1(Q_s_inv,k,"Q_s_inv",1))));
 
-		std::cout << "LP after alpha_t[k] : " << lp_accum__.sum() << std::endl;
-                if (pstream__) {
-                    stan_print(pstream__,"k = ");
-                    stan_print(pstream__,k);
-                    *pstream__ << std::endl;
-                }
+		std::cout << "LP after alpha_t[k][0] : " << lp_accum__.sum() << std::endl;
                 for (int t = 2; t <= (T - 1); ++t) {
-                    if (pstream__) {
-                        stan_print(pstream__,"index = ");
-                        stan_print(pstream__,((((k - 1) * (T - 1)) + t) - 1));
-                        *pstream__ << std::endl;
-                    }
                     lp_accum__.add(multi_normal_prec_log<propto__>(get_base1(alpha_t,(((k - 1) * (T - 1)) + t),"alpha_t",1), get_base1(alpha_t,((((k - 1) * (T - 1)) + t) - 1),"alpha_t",1), multiply((1 / get_base1(sigma2,k,"sigma2",1)),get_base1(Q_s_inv,k,"Q_s_inv",1))));
                 }
+		std::cout << "LP after alpha_t[k] : " << lp_accum__.sum() << std::endl;
                 for (int t = 1; t <= (T - 1); ++t) {
                     stan::math::assign(get_base1_lhs(qQinv_alpha,t,"qQinv_alpha",1), multiply(multiply(get_base1(q_s,k,"q_s",1),get_base1(Q_s_inv,k,"Q_s_inv",1)),get_base1(alpha_t,(((k - 1) * (T - 1)) + t),"alpha_t",1)));
                 }
@@ -688,16 +675,18 @@ public:
                     stan::math::assign(q_i, row(get_base1(q_s,k,"q_s",1),i));
                     stan::math::assign(qvar, multiply(multiply(multiply(get_base1(sigma2,k,"sigma2",1),q_i),get_base1(Q_s_inv,k,"Q_s_inv",1)),transpose(q_i)));
                     stan::math::assign(get_base1_lhs(get_base1_lhs(mu_g,k,"mu_g",1),(((i - 1) * T) + 1),"mu_g",2), ((get_base1(mu,k,"mu",1) + get_base1(get_base1(mu_t,k,"mu_t",1),1,"mu_t",2)) + get_base1(get_base1(mu_g,k,"mu_g",1),(((i - 1) * T) + 1),"mu_g",2)));
-                    stan::math::assign(get_base1_lhs(sqrtvar,(((i - 1) * T) + 1),"sqrtvar",1), sqrt((get_base1(eta2,k,"eta2",1) - cvar)));
+                    stan::math::assign(get_base1_lhs(var_g,(((i - 1) * T) + 1),"var_g",1), (get_base1(eta2,k,"eta2",1) - cvar));
                     for (int t = 2; t <= T; ++t) {
                         stan::math::assign(get_base1_lhs(get_base1_lhs(mu_g,k,"mu_g",1),(((i - 1) * T) + t),"mu_g",2), (((get_base1(mu,k,"mu",1) + get_base1(get_base1(mu_t,k,"mu_t",1),t,"mu_t",2)) + get_base1(get_base1(mu_g,k,"mu_g",1),(((i - 1) * T) + t),"mu_g",2)) + get_base1(get_base1(qQinv_alpha,(t - 1),"qQinv_alpha",1),i,"qQinv_alpha",2)));
-                        stan::math::assign(get_base1_lhs(sqrtvar,(((i - 1) * T) + t),"sqrtvar",1), sqrt((((get_base1(eta2,k,"eta2",1) - cvar) + get_base1(sigma2,k,"sigma2",1)) - qvar)));
+                        stan::math::assign(get_base1_lhs(var_g,(((i - 1) * T) + t),"var_g",1), (((get_base1(eta2,k,"eta2",1) - cvar) + get_base1(sigma2,k,"sigma2",1)) - qvar));
                     }
                 }
                 for (int i = 1; i <= (N * T); ++i) {
-                    lp_accum__.add(normal_log<propto__>(get_base1(get_base1(g,k,"g",1),i,"g",2), get_base1(get_base1(mu_g,k,"mu_g",1),i,"mu_g",2), get_base1(sqrtvar,i,"sqrtvar",1)));
+		  lp_accum__.add(normal_log<propto__>(get_base1(get_base1(g,k,"g",1),i,"g",2), get_base1(get_base1(mu_g,k,"mu_g",1),i,"mu_g",2), sqrt(get_base1(var_g,i,"var_g",1))));
                 }
 		std::cout << "LP after g[k] : " << lp_accum__.sum() << std::endl;
+		//std::cout << "g[k] : " << g[k-1] << std::endl;
+		std::cout << "var_g[k] : " << var_g << std::endl;
 
             }
             for (int i = 1; i <= (N * T); ++i) {
