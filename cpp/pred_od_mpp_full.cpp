@@ -805,12 +805,12 @@ public:
       	  }
       	}
 	// first nonzero alpha_t
-	//lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
+	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
 	std::cout << "LP after alpha_t[k][0] : " << lp << std::endl;
 
 	for (int t=1; t<(T-1); ++t){
     
-	  //lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
+	  lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
       	}
 
 	std::cout << "LP after alpha_t[k] : " << lp << std::endl;
@@ -845,7 +845,7 @@ public:
       	}
 
       	for (int i = 0; i<N*T; ++i){
-	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+	  //lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 
 	std::cout << "LP after g[k] : " << lp << std::endl;
@@ -972,6 +972,15 @@ public:
 	}
       }
       
+      // partial of MVN for alpha_t WRT sigma
+      for (int k=0; k<W; ++k){
+	for (int t=0; t<(T-1); ++t){
+	  for (int v=0; v<N_knots; ++v){
+	    gradient[1 + k] += pow(2 * pi(), N_knots) * sigma[k] * Q
+	  }
+	}
+      }
+
       // partial of mu prior
       for (int k=0; k<W; ++k){
 	gradient[1 + 2*W + k] -=  mu[k] / (mu_std * mu_std);
@@ -1058,8 +1067,8 @@ public:
 	    gradient[1 + W + k] -= AoverB * dAdlam[n];
 	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
 	   
-      	  } // n
-      	} // t
+      	  } // t
+      	} // n
 	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
       } // k  
 
