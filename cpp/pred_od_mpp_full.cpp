@@ -1032,29 +1032,35 @@ public:
       //#pragma omp parallel for
       for (int k=0; k<W; ++k){
 
-	matrix_d dqdlamk = (q_s[k].array() * d_inter.array()).matrix();
-	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix();
+	matrix_d dq = (q_s[k].array() * d_inter.array()).matrix();
+	matrix_d dQ = (Q_s[k].array() * d_knots.array()).matrix();
 
-	vector_d dAdlamk;
+	matrix_d dAp1;
+	matrix_d dBdlam;
+	matrix_d qt = q_s[k].transpose();
 
-	dAdlamk =  lambda_inv[k] * lambda_inv[k] * (- dqdlamk + q_s[k] * Q_s_inv[k] * dQdlamk) * Q_s_inv[k]; 
+	dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq + q_s[k] * Q_s_inv[k] * dQ) * Q_s_inv[k]; 
+	dBdlam = -dq * Q_s_inv[k] * qt + q_s[k] * Q_s_inv[k] * dQ * Q_s_inv[k] * qt - q_s[k] * Q_s_inv[k] * dq.transpose();
+	dBdlam = dBdlam * sigma2[k] * lambda_inv[k] * lambda_inv[k];
 
 	for (int t=0; t<(T-1); ++t){
-
-	  dAdlamk *= dAdlamk * alpha_t[k*(T-1)+t];
+	  
+	  vector_d dAdlam;
+	  dAdlam = dAp1 * alpha_t[k*(T-1)+t];
 
 	  for (int n=0; n<N; ++n){
 
-	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
-	    double B      = var_g[k][n*T+t];
+	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
+	    double B      = var_g[k][n*T+t+1];
       	    double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
 
-	    gradient[1 + 2*W + k] += AoverB;
+	    gradient[1 + W + k] -= AoverB * dAdlam[n];
+	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
 	   
       	  } // n
       	} // t
-	gradient[1 + k] = gradient[1 + k] * lambda_ja[k] + lambda_dj[k];
+	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
       } // k  
 
  // partials of g normal
