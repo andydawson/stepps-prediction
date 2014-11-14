@@ -974,10 +974,22 @@ public:
       
       // partial of MVN for alpha_t WRT sigma
       for (int k=0; k<W; ++k){
-	for (int t=0; t<(T-1); ++t){
-	  for (int v=0; v<N_knots; ++v){
-	    gradient[1 + k] += pow(2 * pi(), N_knots) * sigma[k] * Q
-	  }
+
+	double alpha_Qinv_alpha_first;
+	alpha_Qinv_alpha_first = (alpha_t[k*(T-1)]).transpose() * Q_s_inv[k] * alpha_t[k*(T-1)];
+
+	gradient[1 + k] += -N_knots / sigma[k];
+	gradient[1 + k] += -sigma[k] * alpha_Qinv_alpha_first;
+
+	for (int t=1; t<(T-1); ++t){
+
+	  double alpha_Qinv_alpha_full;
+	  alpha_Qinv_alpha_full = (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
+
+	  //for (int v=0; v<N_knots; ++v){
+	    gradient[1 + k] += -N_knots / sigma[k];
+	    gradient[1 + k] += -sigma[k] * alpha_Qinv_alpha_full;
+	    //}
 	}
       }
 
@@ -1019,7 +1031,9 @@ public:
 
 	    // wrt sigma
 	    if (t > 0){
-	      gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
+	      // uncomment the next line only!
+	      //gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
+	      
 	      // gradient[1 + W + k]  +=  (- 0.5 / B + 2 * AoverB * AoverB ) * dBdlamk;
 	      //gradient[1 + W + k] -= AoverB * dAdlamk;
 	    }
