@@ -809,7 +809,6 @@ public:
 	std::cout << "LP after alpha_t[k][0] : " << lp << std::endl;
 
 	for (int t=1; t<(T-1); ++t){
-    
 	  lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
       	}
 
@@ -845,7 +844,7 @@ public:
       	}
 
       	for (int i = 0; i<N*T; ++i){
-	  //lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 
 	std::cout << "LP after g[k] : " << lp << std::endl;
@@ -979,17 +978,24 @@ public:
 	alpha_Qinv_alpha_first = (alpha_t[k*(T-1)]).transpose() * Q_s_inv[k] * alpha_t[k*(T-1)];
 
 	gradient[1 + k] += -N_knots / sigma[k];
-	gradient[1 + k] += -sigma[k] * alpha_Qinv_alpha_first;
+	gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_first;
+
+	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix() / (lambda[k] * lambda[k]);
+	gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
+	gradient[1 + W + k] += 0.5 / sigma2[k] * alpha_t[k*(T-1)].transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * alpha_t[k*(T-1)];
 
 	for (int t=1; t<(T-1); ++t){
 
 	  double alpha_Qinv_alpha_full;
 	  alpha_Qinv_alpha_full = (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
 
-	  //for (int v=0; v<N_knots; ++v){
-	    gradient[1 + k] += -N_knots / sigma[k];
-	    gradient[1 + k] += -sigma[k] * alpha_Qinv_alpha_full;
-	    //}
+	  gradient[1 + k] += -N_knots / sigma[k];
+	  gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_full;
+
+	gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
+	gradient[1 + W + k] += 0.5 / sigma2[k] *  (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
+
+	  
 	}
       }
 
@@ -1032,9 +1038,9 @@ public:
 	    // wrt sigma
 	    if (t > 0){
 	      // uncomment the next line only!
-	      //gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
+	      gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
 	      
-	      // gradient[1 + W + k]  +=  (- 0.5 / B + 2 * AoverB * AoverB ) * dBdlamk;
+	      //gradient[1 + W + k]  +=  (- 0.5 / B + 2 * AoverB * AoverB ) * dBdlamk;
 	      //gradient[1 + W + k] -= AoverB * dAdlamk;
 	    }
 
@@ -1078,6 +1084,7 @@ public:
       	    double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
 
+	    // uncomment these lines for lambda grad
 	    gradient[1 + W + k] -= AoverB * dAdlam[n];
 	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
 	   
@@ -1098,7 +1105,6 @@ public:
 	    double AoverB = A/B;
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
-	      //int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
 	      gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
 	    }
       	  } // n
@@ -1109,35 +1115,28 @@ public:
       vector_d Qinv_alphat_next;
       vector_d Qinv_alphat_now;
       vector_d Qinv_alphat_first;
-       for (int k=0; k<W; ++k){
-      	for (int n=0; n<N; ++n){
-	  for (int t=1; t<(T-1); ++t){
+      for (int k=0; k<W; ++k){
+	for (int t=0; t<(T-1); ++t){
 
+	  if (t>0) {
+	    Qinv_alphat_now = - 1 / sigma2[k] *  Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
+	  } else {
+	    Qinv_alphat_now = - 1 / sigma2[k] *  Q_s_inv[k] * alpha_t[k*(T-1)+t];
+	  }
+
+	  if (t < T-2) {
+	    Qinv_alphat_next =  1 / sigma2[k] * Q_s_inv[k] * (alpha_t[k*(T-1)+t+1] - alpha_t[k*(T-1)+t]);
+	  }
+
+	  for (int v=0; v<N_knots; ++v){
+	    int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
+	    gradient[idx_alpha_t] += Qinv_alphat_now[v];
 	    if (t < T-2) {
-	      Qinv_alphat_now = 1 / sigma2[k] * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
-	    } // else if (t>1) {
-	    //   //Qinv_alphat_now = 1 / sigma2[k] * Q_s_inv[k] * (alpha_t[k*(T-1)+t+1] - alpha_t[k*(T-1)+t]);
-	    // } else if (t == 1) {
-	    //   //Qinv_alphat_first = 1 / sigma2[k] * Q_s_inv[k] * (alpha_t[k*(T-1)+t]);
-	    // }
-
-	    for (int v=0; v<N_knots; ++v){
-	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
-	      //int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + k*N_knots*(T-1) + v*T + t;
-	      //gradient[idx_alpha_t] += Qinv_alphat_next[v];
-	      
-	      if (t < T-2) {
-		gradient[idx_alpha_t] += Qinv_alphat_now[v];
-	      } // else if (t>1){
-	      // 	//gradient[idx_alpha_t] -= Qinv_alphat_now[v];
-	      // } else if (t==1) {
-	      // 	//gradient[idx_alpha_t] -= Qinv_alphat_first[v];
-	      // }
+	      gradient[idx_alpha_t] += Qinv_alphat_next[v];
 	    }
 	  }
 	}
-       }
-
+      }
 
   // partial of dirmult
       #pragma omp parallel for
