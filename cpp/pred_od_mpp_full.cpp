@@ -844,7 +844,11 @@ public:
       	}
 
       	for (int i = 0; i<N*T; ++i){
-	  lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+	  if (var_g[k][i] <= 1.e-8) {
+	    var_g[k][i] = 0.0;
+	  } else {
+	    lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+	  }
       	}
 
 	std::cout << "LP after g[k] : " << lp << std::endl;
