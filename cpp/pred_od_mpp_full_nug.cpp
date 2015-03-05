@@ -586,28 +586,11 @@ public:
       return lp;
     }
 
-    // double normal_log_double_const_var(const double y, const double mu, const double sigma) const { 
-    //   double lp = 0.0;
-    //   double inv_sigma = 1.0/sigma;
-    //   //double log_sigma = log(sigma);
-
-    //   const double y_minus_mu_over_sigma = (y - mu) * inv_sigma;
-    //   const double y_minus_mu_over_sigma_squared = y_minus_mu_over_sigma * y_minus_mu_over_sigma;
-
-    //   lp -= 0.5 * y_minus_mu_over_sigma_squared;
-    //   //lp -= log_sigma;
-
-    //   return lp;
-    // }
-
     double multi_normal_cholesky_log_double(const vector_d& y,
 					    const vector_d& mu,
 					    const matrix_d& L, bool const_matrix=false) const {
 
       double lp = 0.0;
-
-      //tried adding this line, still wrong...
-      //lp -= log(sqrt(2 * pi() )) * y.rows();
 
       if (!const_matrix) {
         vector_d L_log_diag = L.diagonal().array().log().matrix();
@@ -748,7 +731,6 @@ public:
 
       vector<matrix_d> Q_s(W);
       vector<matrix_d> q_s(W);
-      LLT<matrix_d> llt_Qs;
       vector<matrix_d> Q_s_L(W);
       vector<matrix_d> Q_s_inv(W);
 
@@ -757,79 +739,69 @@ public:
       	lambda_inv[k] = 1.0 / lambda[k];
       }
 
+      #pragma omp parallel for
       for (int k=0; k<W; ++k) {
       	Q_s[k] = (- lambda_inv[k] * d_knots.array()).exp().matrix();
       	q_s[k] = (- lambda_inv[k] * d_inter.array()).exp().matrix();
-      	llt_Qs = Q_s[k].llt();
+	LLT<matrix_d> llt_Qs = Q_s[k].llt();
       	Q_s_L[k] = llt_Qs.matrixL();
       	Q_s_inv[k] = llt_Qs.solve(Eigen::MatrixXd::Identity(N_knots,N_knots));
       }
 
-
-      double cvar;
       vector<vector_d> qvar(W);
-
       vector<matrix_d> H_s(W);
       vector<matrix_d> H_t(W);
-      vector_d Halpha_s;
-      vector_d Halpha_t;
-      vector<vector_d> qQinv_alpha(T);
 
-      row_vector_d c_i;
-      row_vector_d q_i;
       vector<vector_d> var_g(W);
-
       vector<vector_d> mu_g(W);
-
       matrix_d         exp_g(N*T, W);
 
       for (int k=0; k < W; ++k) {
 	var_g[k].resize(N*T);
+        mu_g[k].resize(N*T);
 	qvar[k].resize(N*T);
       }
 
+      double lp_thrd[W];
+
+      #pragma omp parallel for
       for (int k = 0; k<W; ++k){
-	std::cout<<"k = "<<k<<std::endl;
-      	lp += multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k], true);
+      	lp_thrd[k] = multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k], true);
 
-        std::cout << "LP after alpha_s[k] : " << lp << " " << std::endl;
+	H_s[k] = c_s[k] * C_s_inv[k];
+	vector_d Halpha_s = H_s[k] * alpha_s[k];
 
-	H_s[k]   = c_s[k] * C_s_inv[k];
-	Halpha_s = H_s[k] * alpha_s[k];
-      	//Halpha_s = c_s[k] * ( C_s_inv[k] * alpha_s[k] );
-
-        mu_g[k].resize(N*T);
       	for (int i = 0; i<N; ++i){
       	  for (int t = 0; t<T; ++t){
       	    mu_g[k][i * T + t] = Halpha_s[i];
       	  }
       	}
+
 	// first nonzero alpha_t
-	lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
-	std::cout << "LP after alpha_t[k][0] : " << lp << std::endl;
+	lp_thrd[k] += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
 
 	for (int t=1; t<(T-1); ++t){
-	  lp += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
+	  lp_thrd[k] += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
       	}
 
-	std::cout << "LP after alpha_t[k] : " << lp << std::endl;
-
-
 	H_t[k] = q_s[k] * Q_s_inv[k];
+
+	vector<vector_d> qQinv_alpha(T);
 	for (int t=0; t<(T-1); ++t){
 	  qQinv_alpha[t] = H_t[k] * alpha_t[k * (T-1) + t];
 	}
 
       	// time-varying mean
       	for (int t=1; t<T; ++t){
-      	  lp += normal_log_double(mu_t[k][t], mu_t[k][t-1], ksi,  0);
+      	  lp_thrd[k] += normal_log_double(mu_t[k][t], mu_t[k][t-1], ksi,  0);
       	}
 
-	std::cout << "LP after mu_t[k] : " << lp << std::endl;
+	row_vector_d c_i;
+	row_vector_d q_i;
 
       	for (int i = 0; i<N; ++i){
       	  c_i  = c_s[k].row(i);
-      	  cvar = eta2[k] * c_i * C_s_inv[k] * c_i.transpose();
+      	  double cvar = eta2[k] * c_i * C_s_inv[k] * c_i.transpose();
 
       	  q_i  = q_s[k].row(i);
       	  qvar[k][i] = q_i * Q_s_inv[k] * q_i.transpose();
@@ -845,66 +817,46 @@ public:
 
       	for (int i = 0; i<N*T; ++i){
 	  if (var_g[k][i] <= 1.e-8) {
-	    std::cout << "var_g[k] : " << var_g[k][i] << std::endl;
 	    var_g[k][i] = 0.0;
 	  } 
 	  var_g[k][i] += 1;
-	  // if (var_g[k][i] <= 1.e-8) {
-	  //   var_g[k][i] = 0.0;
-	  // } else {
-	  //   lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
-	  // } 
-          lp += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+          lp_thrd[k] += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
-
-	std::cout << "LP after g[k] : " << lp << std::endl;
-	//std::cout << "g[k] : " << g[k] << std::endl;
-	std::cout << "var_g[k] : " << var_g[k] << std::endl;
-
-
-      // //  // std::cout << "LP after alpha[k]: " <<  multi_normal_cholesky_log_double(alpha[k], zeros, C_star_L[k]) << std::endl;
 
       	exp_g.col(k) = exp(g[k]);
       }
 
-      // // // for (int k=0; k<W; ++k)
-      // // // 	lp += lp_thrd[k];
-
-      // // std::cout << "LP after alpha and g: " << lp << std::endl;
-
-      // // // #ifndef NDEBUG
-      // // // if (!exp_g.allFinite()) throw std::runtime_error("exp_g is not finite");
-      // // // #endif
+      for (int k=0; k<W; ++k)
+      	lp += lp_thrd[k];
 
       vector_d sum_exp_g = exp_g.rowwise().sum();
       matrix_d r(N*T,K);
 
+      #pragma omp parallel for
       for (int k = 0; k < W; ++k)
       	for (int i = 0; i < N*T; ++i)
       	  r(i,k) = exp_g(i,k) / (1. + sum_exp_g(i));
 
+      #pragma omp parallel for
       for (int i = 0; i < N*T; ++i)
       	r(i,W) = 1. / (1. + sum_exp_g(i));
 
       matrix_d r_new(N_cores * T, K);
       matrix_d out_sum(N_cores*T,K);
       vector_d sum_w(N*T);
-      int      idx_core;
 
       out_sum.fill(0);
 
-      // XXX: omp??
+      #pragma omp parallel for
       for (int i = 0; i < N_cores; ++i) {
-      	for (int t = 0; t < T; ++t) {
-      	  idx_core = (idx_cores[i] - 1) * T + t;
+	for (int t = 0; t < T; ++t) {
+	  int idx_core = (idx_cores[i] - 1) * T + t;
       	  r_new.row(i * T + t) = gamma * r.row(idx_core);
-
       	  for (int j = 0; j < N; ++j) {
       	    if (d(idx_cores[i]-1,j) > 0) {
       	      out_sum.row(i * T + t) += w(i,j) * r.row(j * T + t);
       	    }
       	  }
-
       	  sum_w[i*T+t] = out_sum.row(i * T + t).sum();
       	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
       	}
@@ -915,7 +867,8 @@ public:
       matrix_d    kappa(N_cores*T,K);
       vector<int> y_row_sum(N_cores*T);
 
-      // XXX: omp?
+
+      // lp! #pragma omp parallel for
       for (int i = 0; i < N_cores * T; ++i) {
       	y_row_sum[i] = 0.0;
       	for (int k = 0; k < K; ++k)
@@ -934,7 +887,6 @@ public:
       	    lp += -lgamma(y[i][k] + 1) + lgamma(y[i][k] + kappa(i,k)) - lgamma(kappa(i,k));
       	  }
       	}
-
       }
 
       gradient.fill(0.0);
@@ -946,11 +898,11 @@ public:
       gradient[0] = gradient[0] * ksi_ja + ksi_dj;
 
       // partial of mu_t normal
-      int idx_mut;
-      //# pragma omp parallel for
+
+      #pragma omp parallel for
       for (int k=0; k<W; ++k) {
 	for (int t=1; t<T; ++t){
-	  idx_mut = 1 + 3*W + k*T + t;
+	  int idx_mut = 1 + 3*W + k*T + t;
 	  gradient[idx_mut] += - (mu_t[k][t] - mu_t[k][t-1]) / ( ksi * ksi );
 	  
 	  if (t<(T-1)){
@@ -970,19 +922,14 @@ public:
       	  }
       	} 
 
-      }
-
-      // partial of MVN for alpha_s wrt to alpha_s
-      for (int k=0; k<W; ++k) {
+	// partial of MVN for alpha_s wrt to alpha_s
 	vector_d tmp = 1 / eta2[k] * C_s_inv[k] * alpha_s[k];
 	for (int v=0; v<N_knots; ++v) {
 	  int idx_alpha_s = 1 + W*3 + W*T + k*N_knots + v;
 	  gradient[idx_alpha_s] -= tmp[v];
 	}
-      }
-      
-      // partial of MVN for alpha_t WRT sigma
-      for (int k=0; k<W; ++k){
+
+	// partial of MVN for alpha_t WRT sigma
 
 	double alpha_Qinv_alpha_first;
 	alpha_Qinv_alpha_first = (alpha_t[k*(T-1)]).transpose() * Q_s_inv[k] * alpha_t[k*(T-1)];
@@ -1002,24 +949,16 @@ public:
 	  gradient[1 + k] += -N_knots / sigma[k];
 	  gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_full;
 
-	gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
-	gradient[1 + W + k] += 0.5 / sigma2[k] *  (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
-
-	  
+	  gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
+	  gradient[1 + W + k] += 0.5 / sigma2[k] *  (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
 	}
-      }
 
-      // partial of mu prior
-      for (int k=0; k<W; ++k){
+	// partial of mu prior
 	gradient[1 + 2*W + k] -=  mu[k] / (mu_std * mu_std);
-      }
 
-      // partials of g normal
-      //#pragma omp parallel for
-      for (int k=0; k<W; ++k){
-
+	// partials of g normal
 	matrix_d dqdlamk = (q_s[k].array() * d_inter.array()).matrix();
-	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix();
+	dQdlamk = (Q_s[k].array() * d_knots.array()).matrix(); // use as above (so fix denom)
 
 	vector_d dAdlamk;
 
@@ -1065,11 +1004,7 @@ public:
 
 	gradient[1 + k] = gradient[1 + k] * sigma_ja[k] + sigma_dj[k];
 
-      } // k
-
-      // partials of g normal
-      //#pragma omp parallel for
-      for (int k=0; k<W; ++k){
+	// partials of g normal
 
 	matrix_d dq = (q_s[k].array() * d_inter.array()).matrix();
 	matrix_d dQ = (Q_s[k].array() * d_knots.array()).matrix();
@@ -1101,11 +1036,7 @@ public:
       	  } // t
       	} // n
 	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
-      } // k  
 
- // partials of g normal
-      //#pragma omp parallel for
-      for (int k=0; k<W; ++k){
       	for (int n=0; n<N; ++n){
       	  for (int t=0; t<(T-1); ++t){
 
@@ -1119,14 +1050,13 @@ public:
 	    }
       	  } // n
       	} // t
-      } // k  
 
-      // partial of MVN for alpha_t (wrt alpha_t)
-      vector_d Qinv_alphat_next;
-      vector_d Qinv_alphat_now;
-      vector_d Qinv_alphat_first;
-      for (int k=0; k<W; ++k){
-	for (int t=0; t<(T-1); ++t){
+	// partial of MVN for alpha_t (wrt alpha_t)
+	vector_d Qinv_alphat_next;
+	vector_d Qinv_alphat_now;
+	vector_d Qinv_alphat_first;
+
+	for (int t=0; t<(T-1); ++t) {
 
 	  if (t>0) {
 	    Qinv_alphat_now = - 1 / sigma2[k] *  Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
@@ -1146,11 +1076,8 @@ public:
 	    }
 	  }
 	}
-      }
 
-  // partial of dirmult
-      #pragma omp parallel for
-      for (int k=0; k<W; ++k) {
+	// partial of dirmult
 	for (int t=0; t<T; ++t) {
 	  for (int i=0; i<N_cores; ++i) {
 
