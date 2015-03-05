@@ -1,0 +1,513 @@
+\documentclass[12pt]{article}
+
+% This first part of the file is called the PREAMBLE. It includes
+% customizations and command definitions. The preamble is everything
+% between \documentclass and \begin{document}.
+
+\usepackage[margin=1in]{geometry}  % set the margins to 1in on all sides
+\usepackage{graphicx}              % to include figures
+\usepackage{amsmath, bm}               % great math stuff
+\usepackage{amsfonts}              % for blackboard bold, etc
+\usepackage{amsthm}                % better theorem environments
+
+
+%%various theorems, numbered by section
+
+%\newtheorem{thm}{Theorem}[section]
+%\newtheorem{lem}[thm]{Lemma}
+%\newtheorem{prop}[thm]{Proposition}
+%\newtheorem{cor}[thm]{Corollary}
+%\newtheorem{conj}[thm]{Conjecture}
+
+%\DeclareMathOperator{\id}{id}
+
+%\newcommand{\bd}[1]{\mathbf{#1}} for bolding symbols
+%\newcommand{\RR}{\mathbb{R}} for Real numbers
+%\newcommand{\ZZ}{\mathbb{Z}} for Integers
+%\newcommand{\col}[1]{\left[\begin{matrix} #1 \end{matrix} \right]}
+%\newcommand{\comb}[2]{\binom{#1^2 + #2^2}{#1+#2}}
+
+\newcommand{\kron}{\raisebox{1pt}{\ensuremath{\:\otimes\:}}} 
+\newcommand{\lgamma}{\text{lgamma}} 
+\newcommand{\digamma}{\text{digamma}} 
+
+\begin{document}
+
+
+\nocite{*}
+
+\title{Prediction model for vegetation composition using pollen proxy data for the Upper Midwest}
+
+\author{Andria Dawson}
+
+\maketitle
+
+% log posterior
+\section{Model}
+
+The sedimentary pollen counts at pond $i$ for time $t$ for taxon $p$ are denoted by $y_{i,t,k}$. These counts are modelled using a dirichlet multinomial distribution according to
+\begin{align*}
+ \bm{y}_{i,t,\cdot} \sim \text{DM} ( n_{i,t}, \alpha_{i,t} )
+\end{align*}
+where $n_{i,t} = \sum_{p=1}^{K} y_{i,t,p}$ and the precision parameter alpha is the sum of the local and non-local contributions
+\begin{align*}
+\alpha_{i,t} = \sum_{k=1}^{K} \gamma \phi_k r_{s(i),t,k} + \frac{1}{C} (1- \gamma) \phi_k \sum_{s_k \neq s(i)} r_{s(i),t,k} w(s(i), s_k).
+\end{align*}
+
+The proportional vegetation $r_{s,t,k}$ is linked to the underlying corresponding spatial process $g_{s,t,\cdot}$ through an additive log-ratio sum-to-one constraint
+\begin{align*}
+r_{s,t,k} = \frac{ \text{exp}(g_{s,t,k}) }{ \sum_{k=1}^K \exp (g_{s,t,k}) }.
+\end{align*} 
+
+The underlying smooth spatial process $g$ is normally distributed
+according to
+\begin{align*} g_{s,t,k} \sim \text{Normal} ( \mu_{s,t,k}^g , (\sigma_{s,t,k})^2 )
+\end{align*}
+where the process mean is determined by the sum of an overall mean, a time-varying mean, a space-varying (time-invariant) mean, and a term describing the spatial innovations between consecutive years. More formally, we have that
+\begin{align*}
+  \mu_{s,t,k}^g = \mu_k + \mu_{t,k}^t + \nu_{s,k}^s + \nu_{s,t,k}^t.
+\end{align*}
+
+The time-varying mean is given by the first order autoregressive model
+\begin{align*}
+\mu^t_{t,k} &\sim \text{Normal}(mu^t_{t-1,k}, \xi^2), \\
+\mu^t_{0,k} &\sim \text{Normal}(0, 20^2).
+\end{align*}
+
+Both the spatial-varying mean and the spatial innovations must be determined for each cell in the domain. Due to the inherent complex dependence structure of the model, the size of the domain, and computational limitations, we make use of the modified predictive process. The modified predictive process provides us with a method to model spatial processes on a subdomain of knots $\bm{s^*}$ containing fewer spatial points than the original domain, and to then scale these results from knots in the subdomain back up to the cells in the desired domain. 
+
+Making use of the modified predictive process, the spatial-varying time invariant mean becomes
+\begin{align*}
+\bm{\nu}_{\cdot, p}^s = \bm{H}_p^s \bm{\alpha}_{p}^s
+\end{align*}
+where the process is modelled according to
+\begin{align*}
+\bm{\alpha}^s_{k} \sim \text{MultivariateNormal}(0, C(\bm{s^{*}}; \eta_k, \rho_k)) 
+\end{align*}
+with the isotropic exponential covariance function $C(s*; \eta_k, \rho_k) = \eta_k^2 \exp(-d(\bm{s^*})/\rho_k )$ where $d(\bm{s^*})$ is the $N_{\text{knots}} \times N_{\text{knots}}$ matrix of distances between all knots in the subdomain. We can therefore scale from knots to cells by left-multiplying the process on the subdomain with
+\begin{align*}
+H^s_{\cdot,k} = c(\bm{s}, \bm{s^*}; \eta_k, \rho_k) C^{*-1}(\bm{s^*}; \eta_k, \rho_k)
+\end{align*}
+where $c(\bm{s}, \bm{s^*}; \rho_k) = \eta_k^2 \exp( -d(\bm{s}, \bm{s^*}) / \rho_k)$. Covariance parameters $\eta_k$ and $\rho_k$ are determined by fitting a modified predictive process model to the settlement-era composition data.
+
+Again, making use of the predictive process, the innovations that result from looking at the differences
+in consecutive years are given by
+\begin{align*}
+\bm{\nu}_{\cdot, t, k}^t = \bm{H}_k^t \bm{\alpha}_{t,k}^t.
+\end{align*}
+The innovations are modelled according to
+\begin{align*}
+\bm{\alpha}^t_{t,k} \sim \text{MultivariateNormal}(\bm{\alpha}^t_{t-1,k}, Q(\bm{s^*}; \sigma^2, \lambda_k))
+\end{align*}
+where $Q$ is again an exponential covariance function determined by
+parameters $\sigma_k$ and $\lambda_k$. The matrix that allows us to
+scale from knots to cells is given by
+\begin{align*}
+H^t_{t,k} =  q(\bm{s}, \bm{s^*}; \sigma_k, \lambda_k) Q^{*-1}(\bm{s^*}; \sigma_k, \lambda_k)
+\end{align*}
+where $q(\bm{s}, \bm{s^*}; \sigma_k, \lambda_k) = \sigma_k^2 \exp( -d(\bm{s},\bm{s^*}) / \lambda_k)$.
+
+The process variance term $\sigma^g_{s,t,k}$ is composed of two
+correction terms, one for each of the predictive processes that we use
+to model the spatially-varying mean and the time varying
+innovations. We have that
+\begin{align*}
+\sigma^g_{s,t,k} &= \eta_k^2 - \eta_k^2 (c(s, \cdot) \, C^{*-1} \, c(s, \cdot)')_{s} \, , \, \text{t=1} \\
+\sigma^g_{s,t,k} &= \eta_k^2 - \eta_k^2 (c(s, \cdot) \, C^{*-1} \, c(s, \cdot)')_{s} + \sigma_k^2 - \sigma_k^2(q(s, \cdot) \,  Q^{*-1} \, q(s, \cdot)')_{s} \, , \, t > 1 \\
+\end{align*}
+
+
+
+\section{Constraining variables}
+
+The NUTS sampler as implemented in Stan operates on the unconstrained
+scale. To transform from the unconstrained to the constrained scale, we
+emulate Stan and use the log-odds transform. For $\tilde{y}$ unconstrained,
+we have that $y = a + (b-a)
+\text{logit}^{-1}(\tilde{y})$ where $y$ is constrained to be in
+$(a,b)$. The absolute derivative (i.e. the Jacobian) is
+
+
+\begin{align*}
+  \left| \frac{d}{dy}\left(a + (b-a) \text{logit}^{-1}(\tilde{y})\right)
+  \right| = (b-a) \text{logit}^{-1}(\tilde{y}) \left( 1 -
+  \text{logit}^{-1}(\tilde{y}) \right).
+\end{align*}
+
+Then we use that the density of the transformed variable $y$ is
+\begin{align*}
+p_y(y) = p_{\tilde{y}}(a + (b-a) \text{logit}^{-1}(\tilde{y})) (b-a)
+\text{logit}^{-1}(\tilde{y}) \left( 1 -
+  \text{logit}^{-1}(\tilde{y}) \right).
+\end{align*}
+
+We assume that $\tilde{\tau}$ is on the unconstrained scale. All other parameters are sampled on the unconstrained scale.
+
+% log posterior
+\section{Log posterior}
+
+The log posterior is given by
+\begin{align*}
+  lp &= \underbrace{\sum_{i=1}^{\text{Ncores}} \sum_{t=1}^{T} \log(\text{dirmult}(y_{i,t,\cdot}| \phi \odot r^{new}_{i,t, \cdot}))}_{\text{lp1}} +
+  \underbrace{\sum_{k=1}^{K-1}\log(\text{mvnorm}(\alpha_k| \eta^2 C_s \kron C_t))}_{\text{lp2}} \\& +
+  \underbrace{\sum_{k=1}^{K-1}\sum_{t=1}^{T}\sum_{c=1}^{N}\log(\text{normal}(g_{c,t,k}| \mu_k + (McC^{*-1}\alpha_{k})_{c,t}, \eta^2 + c_{c,t}C^{*-1}c_{c,t}'))}_{\text{lp3}}
+%  lp &= lp + (b_\eta - a_\eta)\text{logit}^{-1}(\eta)\left( 1-
+%  \text{logit}^{-1}(\eta) \right) \\
+%  lp &= lp + (b_\rho - a_\rho)\text{logit}^{-1}(\rho)\left( 1-
+%  \text{logit}^{-1}(\rho) \right) \\
+%  lp &= lp + \sum_{k=1}^{K-1}\text{norm}(\mu_k | 0, 5)
+\end{align*}
+
+The log multivariate normal density is given by
+\begin{align*}
+  \log(\text{mvnorm}(\alpha_k| \eta^2 C_s \kron C_t))) &= - 0.5 \cdot \text{Ncells $\cdot$ T} \cdot
+  \log(2 \pi) -0.5 \log(|\eta^2 C_s \kron C_t|) \\ \qquad & - 0.5 \cdot \alpha_k'(\eta^2 C_s \kron C_t)^{-1} \alpha_k \\
+                                       %&= f(\alpha_k, \tau).
+\end{align*}
+
+The log normal density is given by
+\begin{align*}
+  \log(\text{normal}(g_{c,t,k}| \mu_g, \sigma^2))) &= \frac{1}{\sigma\sqrt{2\pi}} \exp\left(-\frac{(x-\mu_g)^2}{2\sigma^2}\right)
+\end{align*}
+where $\mu_{g (c,t,k)} = \mu_k + \left(McC^{*-1}\alpha_{k}\right)_{c,t}$ and $\sigma^2_{c,t,k}=\eta^2 + c_{c,t;k} C^{*-1}_k c_{c,t;k}'$.
+
+
+The dirichlet multinomial is defined in terms of $\kappa_{i,t,\cdot} = \phi \odot r^{\text{new}}_{i,t,\cdot}$. We also define Ngrains$_{i,t}=\sum_k y_{i,t,k}$ and $A_{i,t}= \sum_k \kappa_{i,t,k}$. Then we have
+\begin{align*}
+  \log(\text{dirmult}(y_{i,t,\cdot}| \kappa_{i,t,\cdot}))
+    &= \lgamma (\text{Ngrains}_{i,t} + 1 ) - \lgamma(A_{i,t} + \text{Ngrains}_{i,t}) + \lgamma(A_{i,t})  \\
+    & \qquad + \sum_k \left( - \lgamma(y_{i,t,k} + 1) + \lgamma(y_{i,t,k} + \kappa_{i,t,k}) - \lgamma(\kappa_{i,t,k})\right)
+    %&= h_i(\alpha_k, \tau, \mu).
+\end{align*}
+
+Insert intermediate model details here....
+
+
+\section{Matrix rules}
+
+\begin{align*}
+\frac{\partial |C_k|}{\partial x} = |C_k|tr\left( C_k^{-1}
+\frac{\partial C_k}{\partial x} \right)
+\end{align*}
+
+\begin{align*}
+\frac{\partial C_k^{-1}}{\partial x} = - C_k^{-1}\frac{\partial
+C_k}{\partial x} C_k^{-1}
+\end{align*}
+
+\section{Matrix simplifications}
+
+\begin{align*}
+c \, C^{*-1} \, c' = \eta^2 \, c_s C_s^{*-1} c_s' \kron C_t
+\end{align*}
+
+%\subsubsection{Derivative of a kronecker product}
+
+%For $A \kron B$, we have that
+
+%\begin{align*}
+%\frac{ \partial A \kron B }{ \partial B } &= (I_n \kron T_{qm} \kron I_p)(vec(A) \kron I_{qp}),\\
+%                                          &= (T_{pq} \kron I_{mn})(I_q \kron vec(A) \kron I_p)
+%\end{align*}
+%where the vec operator vectorizes a matrix by stacking its columns, the T operator permutes rows (premultipy) or columns (postmultiply) of a matrix. 
+
+\section{Gradient}
+
+The parameters in the model and corresponding dimensions (in order corresponding with stacked parameter vector) are: $\xi$ (double), $\sigma_k$ (W), $\lambda_k$ (W), $\mu_k$ (W), $\mu_{t,k}^t$ (W $\times$ T) , $\alpha_k^s$ (W $\times$ N$_{\text{knots}}$) , $\alpha_{t,k}^t$ (W(T-1) $\times$ N$_{\text{knots}}$), and $g_{s,t,k}$ (W $\times$ (N T)).
+
+\subsection{Gradient with respect to $\xi$}
+
+\begin{align*}
+\frac{\partial lp (\xi)}{\partial \xi} = \sum_{s,t,k}  - \frac{1}{\xi} + \frac{(\mu_{t,k}^t - \mu_{t-1,k}^t)^2}{\xi^3} \\
+\frac{\partial lp (\xi)}{\partial \xi} =\frac{\partial lp (\xi)}{\partial \xi} * \xi_{ja} + \xi_{dj}
+\end{align*}
+
+\subsection{Gradient with respect to $\sigma_k$}
+
+\subsubsection{Gradient of $g_{s,t,k}$}
+
+Let $A = g_{s,t,k} - \mu_{s,t,k}^g$ and $B=(\sigma_{s,t,k}^g)^2$. Then we have that
+
+\begin{align*}
+\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} = \sum_{s,t} \left( - \frac{1}{B} - \frac{A^2}{B^2} \right) \sigma_k \left( 1 - q(s, \cdot) Q^{*-1} q(s, \cdot)' \right), \quad \text{for } t>1; \\
+\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} = 0, \quad \text{for } t=0.
+\end{align*}
+
+\subsubsection{Gradient of $\alpha_{t,k}^t$}
+
+\begin{align*}
+\frac{\partial lp (\alpha_{t,k}^t (\sigma_k))}{\partial \sigma_k} = \sum_{t} - \frac{1}{\sigma_k} \left( N_{\text{knots}} + (\alpha_{t,k}^t - \alpha_{t-1,k}^t) Q^{*-1} (\alpha_{t,k}^t - \alpha_{t-1,k}^t)' \right), \quad \text{ for  } t>0; \\ 
+\frac{\partial lp (\alpha_{t,k}^t (\sigma_k))}{\partial \sigma_k} = \sum_{t} - \frac{1}{\sigma_k} \left( N_{\text{knots}} + (\alpha_{0,k}^t) Q^{*-1} (\alpha_{0,k}^t)' \right), \quad \text{ for  } t=0;
+\end{align*}
+
+
+
+
+Finally, we adjust to constrain parameter space. We have that
+\begin{align*}
+\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} = \frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} \sigma_{ja} + \sigma_{dj}
+\end{align*}
+
+\subsection{Partial derivatives of the multivariate normal}
+
+\subsubsection{With respect to $\tau$}
+
+\begin{align*}
+\frac{ \partial lp1 }{ \partial \tau } &= \sum_{k=1}^{K-1} -0.5 tr(C^{* -1} \eta (C_s \kron \left(-lag/\tau^2 \odot C_t \right)) - 0.5 \alpha_k' C^{* -1} \eta \left(C_s \kron \left( -lag/\tau^2 \odot C_t \right) \right) C^{* -1} \alpha_k 
+\end{align*}
+
+\subsubsection{With respect to $\alpha_{j,k}$}
+
+We have that
+\begin{align*}
+\frac{ \partial lp1 }{ \partial \alpha_{j,k} } &= -0.5 \left( (C^{* -1} \alpha_k)_{j} - (\alpha_k' C^{* -1})_{j} \right)
+\end{align*}
+where $_j$ indicates the element in the j-th position.
+
+
+%\subsection{Partial derivatives of the dirichlet multinomial}
+
+%%For the derivatives of the dirichlet multinomial piece, we use the chain rule. Several components of this derivative, namely those denoted by as \textit{Parts 1 - 4} are common across parameters, so we compute them first.
+
+%%\begin{align*}
+%%  \frac{\partial h_i(\alpha, \tau, \mu)}{\partial \mu_k} = 
+%%  \underbrace{ \frac{\partial h(\alpha, \tau, \mu)}{\partial \kappa_{i,m}} }_{\text{1}} \cdot
+%%  \underbrace{ \frac{\partial \kappa_{i,m}}{\partial r^\text{new}_{i,m}} }_{\text{2}} \cdot
+%%  \underbrace{ \frac{\partial r^\text{new}_{i,m} }{\partial r_{i,m}} }_{\text{3}} 
+%%  \underbrace{ \frac{\partial r_{i,m}}{\partial g_{i,k}} }_{\text{4}} 
+%%   \underbrace{ \frac{\partial g_{i,k}}{\partial \mu_k} }_{\text{5}} 
+%%\end{align*}
+
+%\subsection{With respect to $\mu_k$}
+% 
+%\begin{align*}
+% \frac{\partial lp2}{\partial \mu_k} =& \sum_i \sum_t \left( \log\Gamma'(\text{N\_grains}_{i,t} + 1 ) + \log\Gamma'(A_{i,t} + \text{N\_grains}_{i,t}) + \log\Gamma'(A_{i,t}) \right) \left( \sum_{m=1}^{K} \frac{\partial \kappa_{i,t,m}}{\partial \mu_k} \right) \\ & + \sum_i \sum_t \sum_m \left( - \log\Gamma'(y_{i,k} + 1) + \log\Gamma'(y_{i,t,m} + \kappa_{i,t,m}) - \log\Gamma'(\kappa_{i,t,m})\right)\frac{\partial \kappa_{i,t,m}}{\partial \mu_k}
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial \kappa_{i,t,m}}{\partial \mu_k} &= \phi_m \frac{\partial r_{i,t,m}^{new}}{\partial \mu_k} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial \mu_k} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}} \sum_{m''} \frac{\partial r_{c,t,m'}}{\partial g_{c,t,m''}}\frac{\partial g_{c,t,m''}}{\partial \mu_k} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}}\frac{\partial g_{c,t,k}}{\partial \mu_k} \\
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial g_{c,t,k}}{\partial \mu_k} = 1
+%\end{align*}
+
+%\subsection{With respect to $\tau$}
+
+%Define $C_{sint} = \exp{\left(-\frac{d_{inter}}{\rho}\right)}$.
+
+%We have that
+%\begin{align*}
+% \frac{\partial lp2}{\partial\tau} = 0
+%\end{align*}
+%because
+%\begin{align*}
+%\frac{\partial g_{c,t,k}}{\partial \tau} &= \left( \frac{\partial c_s}{\partial\tau} C^{* -1} \alpha_{\cdot,\cdot,k} \right) + \left( c_s  \frac{\partial C^{* -1} \alpha_{\cdot,\cdot,k}}{\partial\tau} \right)_{c,t}\\
+%&= \tau^{-2} \left(C_{sint} \kron (C_t \odot \text{lag} )\right) \left( C_s^{-1} \kron C_t^{-1} \right) \alpha_{\cdot, \cdot, k} \\ 
+%& \quad + \tau^{-2} \left(C_{sint} \kron C_t \right) \left( C_s^{-1} \kron (C_t^{-1} (C_t \odot \text{lag} ) C_t^{-1})\right) \alpha_{\cdot, \cdot, k} 
+%\end{align*}
+
+%\subsection{With respect to $\alpha_{j,k}$}
+
+
+
+%\begin{align*}
+% \frac{\partial lp2}{\partial\alpha_{v,t,k}} =& \sum_i \sum_t \left( \log\Gamma'(\text{N\_grains}_{i,t} + 1 ) + \log\Gamma'(A_{i,t} + \text{N\_grains}_{i,t}) + \log\Gamma'(A_{i,t}) \right) \left( \sum_{m=1}^{K} \frac{\partial \kappa_{i,t,m}}{\partial \alpha_{v,t,k}} \right) \\ & + \sum_i \sum_t \sum_m \left( - \log\Gamma'(y_{i,k} + 1) + \log\Gamma'(y_{i,t,m} + \kappa_{i,t,m}) - \log\Gamma'(\kappa_{i,t,m})\right)\frac{\partial \kappa_{i,t,m}}{\partial \alpha_{v,t,k}}
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial \kappa_{i,t,m}}{\partial\alpha_{v,t,k}} &= \phi_m \frac{\partial r_{i,t,m}^{new}}{\partial \alpha_{v,t,k}} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial \alpha_{v,t,k}} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}} \sum_{m''} \frac{\partial r_{c,t,m'}}{\partial g_{c,t,m''}}\frac{\partial g_{c,t,m''}}{\partial \alpha_{v,t,k}} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}}\frac{\partial g_{c,t,k}}{\partial \alpha_{v,t,k}} \\
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial g_{c,t,k}}{\partial \alpha_{v,t,k}} = (c \cdot C^{* -1})_{(c,t), (v,t)}
+%\end{align*}
+
+
+
+\subsection{Partial of $r^{new}_{i,t,m}$ with respect to $r_{c,t,m'}$}
+
+Here, we recall that $C_{i,t}=\sum_m \sum_{s(i) \neq s_k} r_{s_k,t,m} w(s(i), s_k)$. We have several cases.
+
+For $m'=m$, and $s(i) = c$
+\begin{align*}
+        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= \gamma 
+\end{align*}
+
+For $m'=m$, and $s(i) \neq c$
+\begin{align*}
+        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= (1-\gamma) \left(\frac{w(s(i),c)- w(s(i),c) \sum_{s(i) \neq s_k} r_{s_k,t,m} w(s(i),s_k)}{C_{i,t}^2} \right)
+\end{align*}
+
+For $m' \neq m$, and $s(i) \neq c$
+\begin{align*}
+        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= 0
+\end{align*}
+
+For $m' \neq m$, and $s(i) = c$
+\begin{align*}
+        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= (1-\gamma) \left(- \frac{w(s(i),c) \sum_{s(i) \neq s_k} r_{s_k,t,m} w(s(i),s_k)}{C_{i,t}^2} \right)
+\end{align*}
+
+\subsection{Partial of $r_{c,t,m'}$ with respect to $g_{c,t,k}$}
+
+
+For $(m' = K)$ we have
+\begin{align*}
+  \frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}} = -\exp(g_{c,t,k})\left( 1 +
+  \sum_{j=1}^{K-1} \exp(g_{c,t,j})\right)^{-2}.
+\end{align*}
+For $m' = k$ 
+\begin{align*}
+  \frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}} = \frac{\exp(g_{c,t,k})\left(
+  1 + \sum_{j=1}^{K-1} \exp(g_{c,t,j}))\right) - \exp(g_{c,t,k})^2}{\left(1 +
+  \sum_{j=1}^{K-1} \exp(g_{c,t,j})\right)^2}.
+\end{align*}
+Finally for $m' \neq k$ and $m' < K$ we have
+\begin{align*}
+  \frac{\partial r_{c,t,m}}{\partial g_{c,t,k}} &= -\exp(g_{c,t,m})
+  \exp(g_{c,t,k})\left( 1 + \sum_{j=1}^{K-1} exp(g_{c,t,j}))\right)^{-2}.
+\end{align*}
+
+\section{Prior with respect to $\mu_k$}
+
+Since $\mu_k$ has a normal prior with, with mean$=a$ and sd$=b$, we need to add 
+
+\begin{align*}
+\frac{\partial \log(normal(\mu_k | a=0, b=2))}{\partial \mu_k} = -0.25 \mu_k
+\end{align*}
+
+
+
+
+
+
+
+
+
+
+%\subsection{Partial derivatives of the dirichlet multinomial}
+
+%%For the derivatives of the dirichlet multinomial piece, we use the chain rule. Several components of this derivative, namely those denoted by as \textit{Parts 1 - 4} are common across parameters, so we compute them first.
+
+%%\begin{align*}
+%%  \frac{\partial h_i(\alpha, \tau, \mu)}{\partial \mu_k} = 
+%%  \underbrace{ \frac{\partial h(\alpha, \tau, \mu)}{\partial \kappa_{i,m}} }_{\text{1}} \cdot
+%%  \underbrace{ \frac{\partial \kappa_{i,m}}{\partial r^\text{new}_{i,m}} }_{\text{2}} \cdot
+%%  \underbrace{ \frac{\partial r^\text{new}_{i,m} }{\partial r_{i,m}} }_{\text{3}} 
+%%  \underbrace{ \frac{\partial r_{i,m}}{\partial g_{i,k}} }_{\text{4}} 
+%%   \underbrace{ \frac{\partial g_{i,k}}{\partial \mu_k} }_{\text{5}} 
+%%\end{align*}
+
+%\subsection{With respect to $\mu_k$}
+% 
+%\begin{align*}
+% \frac{\partial lp2}{\partial \mu_k} =& \sum_i \sum_t \left( \log\Gamma'(\text{N\_grains}_{i,t} + 1 ) + \log\Gamma'(A_{i,t} + \text{N\_grains}_{i,t}) + \log\Gamma'(A_{i,t}) \right) \left( \sum_{m=1}^{K} \frac{\partial \kappa_{i,t,m}}{\partial \mu_k} \right) \\ & + \sum_i \sum_t \sum_m \left( - \log\Gamma'(y_{i,k} + 1) + \log\Gamma'(y_{i,t,m} + \kappa_{i,t,m}) - \log\Gamma'(\kappa_{i,t,m})\right)\frac{\partial \kappa_{i,t,m}}{\partial \mu_k}
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial \kappa_{i,t,m}}{\partial \mu_k} &= \phi_m \frac{\partial r_{i,t,m}^{new}}{\partial \mu_k} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial \mu_k} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}} \sum_{m''} \frac{\partial r_{c,t,m'}}{\partial g_{c,t,m''}}\frac{\partial g_{c,t,m''}}{\partial \mu_k} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}}\frac{\partial g_{c,t,k}}{\partial \mu_k} \\
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial g_{c,t,k}}{\partial \mu_k} = 1
+%\end{align*}
+
+%\subsection{With respect to $\tau$}
+
+%Define $C_{sint} = \exp{\left(-\frac{d_{inter}}{\rho}\right)}$.
+
+%We have that
+%\begin{align*}
+% \frac{\partial lp2}{\partial\tau} = 0
+%\end{align*}
+%because
+%\begin{align*}
+%\frac{\partial g_{c,t,k}}{\partial \tau} &= \left( \frac{\partial c_s}{\partial\tau} C^{* -1} \alpha_{\cdot,\cdot,k} \right) + \left( c_s  \frac{\partial C^{* -1} \alpha_{\cdot,\cdot,k}}{\partial\tau} \right)_{c,t}\\
+%&= \tau^{-2} \left(C_{sint} \kron (C_t \odot \text{lag} )\right) \left( C_s^{-1} \kron C_t^{-1} \right) \alpha_{\cdot, \cdot, k} \\ 
+%& \quad + \tau^{-2} \left(C_{sint} \kron C_t \right) \left( C_s^{-1} \kron (C_t^{-1} (C_t \odot \text{lag} ) C_t^{-1})\right) \alpha_{\cdot, \cdot, k} 
+%\end{align*}
+
+%\subsection{With respect to $\alpha_{j,k}$}
+
+
+
+%\begin{align*}
+% \frac{\partial lp2}{\partial\alpha_{v,t,k}} =& \sum_i \sum_t \left( \log\Gamma'(\text{N\_grains}_{i,t} + 1 ) + \log\Gamma'(A_{i,t} + \text{N\_grains}_{i,t}) + \log\Gamma'(A_{i,t}) \right) \left( \sum_{m=1}^{K} \frac{\partial \kappa_{i,t,m}}{\partial \alpha_{v,t,k}} \right) \\ & + \sum_i \sum_t \sum_m \left( - \log\Gamma'(y_{i,k} + 1) + \log\Gamma'(y_{i,t,m} + \kappa_{i,t,m}) - \log\Gamma'(\kappa_{i,t,m})\right)\frac{\partial \kappa_{i,t,m}}{\partial \alpha_{v,t,k}}
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial \kappa_{i,t,m}}{\partial\alpha_{v,t,k}} &= \phi_m \frac{\partial r_{i,t,m}^{new}}{\partial \alpha_{v,t,k}} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial \alpha_{v,t,k}} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}} \sum_{m''} \frac{\partial r_{c,t,m'}}{\partial g_{c,t,m''}}\frac{\partial g_{c,t,m''}}{\partial \alpha_{v,t,k}} \\
+%&= \phi_m \sum_c \sum_{m'} \frac{\partial r_{i,t,m}^{new}}{\partial r_{c,t,m'}}\frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}}\frac{\partial g_{c,t,k}}{\partial \alpha_{v,t,k}} \\
+%\end{align*}
+
+%\begin{align*}
+%\frac{\partial g_{c,t,k}}{\partial \alpha_{v,t,k}} = (c \cdot C^{* -1})_{(c,t), (v,t)}
+%\end{align*}
+
+
+
+%\subsection{Partial of $r^{new}_{i,t,m}$ with respect to $r_{c,t,m'}$}
+
+%Here, we recall that $C_{i,t}=\sum_m \sum_{s(i) \neq s_k} r_{s_k,t,m} w(s(i), s_k)$. We have several cases.
+
+%For $m'=m$, and $s(i) = c$
+%\begin{align*}
+%        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= \gamma 
+%\end{align*}
+
+%For $m'=m$, and $s(i) \neq c$
+%\begin{align*}
+%        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= (1-\gamma) \left(\frac{w(s(i),c)- w(s(i),c) \sum_{s(i) \neq s_k} r_{s_k,t,m} w(s(i),s_k)}{C_{i,t}^2} \right)
+%\end{align*}
+
+%For $m' \neq m$, and $s(i) \neq c$
+%\begin{align*}
+%        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= 0
+%\end{align*}
+
+%For $m' \neq m$, and $s(i) = c$
+%\begin{align*}
+%        \frac{\partial r^\text{new}_{i,t,m} }{\partial r_{c,t,m'}} &= (1-\gamma) \left(- \frac{w(s(i),c) \sum_{s(i) \neq s_k} r_{s_k,t,m} w(s(i),s_k)}{C_{i,t}^2} \right)
+%\end{align*}
+
+%\subsection{Partial of $r_{c,t,m'}$ with respect to $g_{c,t,k}$}
+
+
+%For $(m' = K)$ we have
+%\begin{align*}
+%  \frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}} = -\exp(g_{c,t,k})\left( 1 +
+%  \sum_{j=1}^{K-1} \exp(g_{c,t,j})\right)^{-2}.
+%\end{align*}
+%For $m' = k$ 
+%\begin{align*}
+%  \frac{\partial r_{c,t,m'}}{\partial g_{c,t,k}} = \frac{\exp(g_{c,t,k})\left(
+%  1 + \sum_{j=1}^{K-1} \exp(g_{c,t,j}))\right) - \exp(g_{c,t,k})^2}{\left(1 +
+%  \sum_{j=1}^{K-1} \exp(g_{c,t,j})\right)^2}.
+%\end{align*}
+%Finally for $m' \neq k$ and $m' < K$ we have
+%\begin{align*}
+%  \frac{\partial r_{c,t,m}}{\partial g_{c,t,k}} &= -\exp(g_{c,t,m})
+%  \exp(g_{c,t,k})\left( 1 + \sum_{j=1}^{K-1} exp(g_{c,t,j}))\right)^{-2}.
+%\end{align*}
+
+%\section{Prior with respect to $\mu_k$}
+
+%Since $\mu_k$ has a normal prior with, with mean$=a$ and sd$=b$, we need to add 
+
+%\begin{align*}
+%\frac{\partial \log(normal(\mu_k | a=0, b=2))}{\partial \mu_k} = -0.25 \mu_k
+%\end{align*}
+
+\end{document}
