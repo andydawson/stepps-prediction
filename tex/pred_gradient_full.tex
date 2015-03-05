@@ -229,23 +229,44 @@ The parameters in the model and corresponding dimensions (in order corresponding
 Let $A = g_{s,t,k} - \mu_{s,t,k}^g$ and $B=(\sigma_{s,t,k}^g)^2$. Then we have that
 
 \begin{align*}
-\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} = \sum_{s,t} \left( - \frac{1}{B} - \frac{A^2}{B^2} \right) \sigma_k \left( 1 - q(s, \cdot) Q^{*-1} q(s, \cdot)' \right), \quad \text{for } t>1; \\
-\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} = 0, \quad \text{for } t=0.
+\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} &= \sum_{s,t} \left( - \frac{1}{B} - \frac{A^2}{B^2} \right) \sigma_k \left( 1 - q(s, \cdot) Q^{*-1} q(s, \cdot)' \right), \quad \text{for } t>1; \\
+\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} &= 0, \quad \text{for } t=0.
 \end{align*}
 
 \subsubsection{Gradient of $\alpha_{t,k}^t$}
 
 \begin{align*}
-\frac{\partial lp (\alpha_{t,k}^t (\sigma_k))}{\partial \sigma_k} = \sum_{t} - \frac{1}{\sigma_k} \left( N_{\text{knots}} + (\alpha_{t,k}^t - \alpha_{t-1,k}^t) Q^{*-1} (\alpha_{t,k}^t - \alpha_{t-1,k}^t)' \right), \quad \text{ for  } t>0; \\ 
-\frac{\partial lp (\alpha_{t,k}^t (\sigma_k))}{\partial \sigma_k} = \sum_{t} - \frac{1}{\sigma_k} \left( N_{\text{knots}} + (\alpha_{0,k}^t) Q^{*-1} (\alpha_{0,k}^t)' \right), \quad \text{ for  } t=0;
+\frac{\partial lp (\alpha_{t,k}^t (\sigma_k))}{\partial \sigma_k} &= \sum_{t} - \frac{1}{\sigma_k} \left( N_{\text{knots}} + (\alpha_{t,k}^t - \alpha_{t-1,k}^t) Q^{*-1} (\alpha_{t,k}^t - \alpha_{t-1,k}^t)' \right), \quad \text{ for  } t>0; \\ 
+\frac{\partial lp (\alpha_{t,k}^t (\sigma_k))}{\partial \sigma_k} &= \sum_{t} - \frac{1}{\sigma_k} \left( N_{\text{knots}} + (\alpha_{0,k}^t) Q^{*-1} (\alpha_{0,k}^t)' \right), \quad \text{ for  } t=0;
 \end{align*}
-
-
 
 
 Finally, we adjust to constrain parameter space. We have that
 \begin{align*}
-\frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} = \frac{\partial lp (g (\sigma_k))}{\partial \sigma_k} \sigma_{ja} + \sigma_{dj}
+\frac{\partial lp (\sigma_k)}{\partial \sigma_k} = \frac{\partial lp ( \sigma_k)}{\partial \sigma_k} \sigma_{ja} + \sigma_{dj}
+\end{align*}
+
+\subsection{Gradient with respect to $\lambda_k$}
+
+\subsubsection{Gradient of $g_{s,t,k}$}
+
+Let $A = g_{s,t,k} - \mu_{s,t,k}^g$ and $B=(\sigma_{s,t,k}^g)^2$. Then we have that
+
+\begin{align*}
+\frac{\partial lp (g (\lambda_k))}{\partial \lambda_k} &= \sum_{s,t} 0.5 \left(\frac{A^2}{B^2} - \frac{1}{B}\right) \frac{\partial B}{\partial \lambda_k} - \frac{A}{B}\frac{\partial A}{\partial \lambda_k}  , \quad \text{for } t>1; \\
+\frac{\partial lp (g (\lambda_k))}{\partial \lambda_k} &= 0, \quad \text{for } t=0.
+\end{align*}
+
+\subsubsection{Gradient of $\alpha_{t,k}^t$}
+
+\begin{align*}
+\frac{\partial lp (\alpha_{t,k}^t (\lambda_k))}{\partial \lambda_k} &= \sum_{t} - 0.5 \lambda^{-2} \text{trace} \left( Q^{*-1} \left( Q^* \otimes d_{\text{knots}} \right) \right) + 0.5 \lambda^{-2} (\alpha_{t,k}^t - \alpha_{t-1,k}^t) Q^{*-1} (Q^* \otimes d_{\text{knots}})  Q^{*-1} (\alpha_{t,k}^t - \alpha_{t-1,k}^t)', \quad \text{ for  } t>1; \\ 
+\frac{\partial lp (\alpha_{1,k}^t (\lambda_k))}{\partial \lambda_k} &= \sum_{t} - 0.5 \lambda^{-2} \text{trace} \left( Q^{*-1} \left(Q^* \otimes d_{\text{knots}} \right) \right) + 0.5 \lambda^{-2} \alpha_{1,k}^t Q^{*-1} (Q^* \otimes d_{\text{knots}})  Q^{*-1} (\alpha_{1,k}^t)' , \quad \text{ for  } t=1;
+\end{align*}
+
+Finally, we adjust to constrain parameter space. We have that
+\begin{align*}
+\frac{\partial lp}{\partial \lambda_k} = \frac{\partial lp (\lambda_k)}{\partial \lambda_k} \lambda_{ja} + \lambda_{dj}
 \end{align*}
 
 \subsection{Partial derivatives of the multivariate normal}
