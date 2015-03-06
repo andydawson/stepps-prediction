@@ -1,0 +1,5 @@
+#! /bin/sh
+
+CASE=$1 #veg_stan_od 
+
+./$CASE.exe sample num_samples=5 num_warmup=15 data file=../r/dump/pred_data_12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3.dump init=../r/dump/pred_data_12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3_inits_full.dump output file=$CASE.csv random seed=42

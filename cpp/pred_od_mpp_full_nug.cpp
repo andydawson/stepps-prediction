@@ -721,7 +721,7 @@ public:
       for (int k=0; k<W; ++k){
       	// lp += normal_log_double_const_var(mu_t[k][0], 0.0, mut0_sd);
 	lp += normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1);
-	std::cout << "mu_t[k][0]" << normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1) << std::endl;
+	//std::cout << "mu_t[k][0]" << normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1) << std::endl;
       }
 
       std::cout << "LP after mu_t[k][0] : " << lp << std::endl;
