@@ -8,7 +8,7 @@ runs = [ ('pred_od_mpp_full_nug_umwE',
           init=../r/dump/pred_data_12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3_inits_full.dump \
           output file=../output/12taxa_457cells_77knots_0to2000ypb_umwE_3by_od_mpp_full.csv\
           random seed=42'),
-('pred_od_mpp_full_nug_umwE',
+('pred_od_mpp_full_nug_umwW',
           './pred_od_mpp_full_nug.exe \
           sample num_warmup=75 num_samples=1000 save_warmup=1\
           data file=../r/dump/pred_data_12taxa_459cells_77knots_0to2000ypb_umwW_3by_v0.3.dump \
