@@ -636,6 +636,11 @@ public:
 
       double lp = 0.0;
 
+      paleon::Timer timer_lpg(1), timer_fac(1), timer_varg(W), timer_rnew(1), timer_lgamma(1),
+	timer_mvn(W), timer_gnormal(W), timer_gnormal2(W), timer_alphat(W), timer_dirmult(W);
+
+      timer_lpg.tic(0);
+
       //
       // unpack model parameters and constrain
       //
@@ -719,12 +724,8 @@ public:
       mut0_sd = 20.0;
 
       for (int k=0; k<W; ++k){
-      	// lp += normal_log_double_const_var(mu_t[k][0], 0.0, mut0_sd);
 	lp += normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1);
-	//std::cout << "mu_t[k][0]" << normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1) << std::endl;
       }
-
-      std::cout << "LP after mu_t[k][0] : " << lp << std::endl;
 
       vector<double> lambda_inv(W);
       vector<double> sigma2(W);
@@ -739,6 +740,8 @@ public:
       	lambda_inv[k] = 1.0 / lambda[k];
       }
 
+      timer_fac.tic(0);
+
       #pragma omp parallel for
       for (int k=0; k<W; ++k) {
       	Q_s[k] = (- lambda_inv[k] * d_knots.array()).exp().matrix();
@@ -747,6 +750,8 @@ public:
       	Q_s_L[k] = llt_Qs.matrixL();
       	Q_s_inv[k] = llt_Qs.solve(Eigen::MatrixXd::Identity(N_knots,N_knots));
       }
+
+      timer_fac.toc(0);
 
       vector<vector_d> qvar(W);
       vector<matrix_d> H_s(W);
@@ -799,6 +804,8 @@ public:
 	row_vector_d c_i;
 	row_vector_d q_i;
 
+	timer_varg.tic(k);
+
       	for (int i = 0; i<N; ++i){
       	  c_i  = c_s[k].row(i);
       	  double cvar = eta2[k] * c_i * C_s_inv[k] * c_i.transpose();
@@ -814,6 +821,8 @@ public:
       	    var_g[k][i * T + t] = eta2[k] - cvar + sigma2[k] - sigma2[k] * qvar[k][i];
       	  }
       	}
+
+	timer_varg.toc(k);
 
       	for (int i = 0; i<N*T; ++i){
 	  if (var_g[k][i] <= 1.e-8) {
@@ -847,6 +856,8 @@ public:
 
       out_sum.fill(0);
 
+      timer_rnew.tic(0);
+
       #pragma omp parallel for
       for (int i = 0; i < N_cores; ++i) {
 	for (int t = 0; t < T; ++t) {
@@ -861,12 +872,15 @@ public:
       	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
       	}
       }
+
+      timer_rnew.toc(0);
       
       vector<int> N_grains(N_cores*T);
       vector_d    A(N_cores*T);
       matrix_d    kappa(N_cores*T,K);
       vector<int> y_row_sum(N_cores*T);
 
+      timer_lgamma.tic(0);
 
       // lp! #pragma omp parallel for
       for (int i = 0; i < N_cores * T; ++i) {
@@ -888,6 +902,10 @@ public:
       	  }
       	}
       }
+
+      timer_lgamma.toc(0);
+
+      std::cout << "Finished LP " << std::endl;
 
       gradient.fill(0.0);
 
@@ -931,6 +949,8 @@ public:
 
 	// partial of MVN for alpha_t WRT sigma
 
+	timer_mvn.tic(k);
+
 	double alpha_Qinv_alpha_first;
 	alpha_Qinv_alpha_first = (alpha_t[k*(T-1)]).transpose() * Q_s_inv[k] * alpha_t[k*(T-1)];
 
@@ -953,21 +973,18 @@ public:
 	  gradient[1 + W + k] += 0.5 / sigma2[k] *  (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
 	}
 
+	timer_mvn.toc(k);
+
 	// partial of mu prior
 	gradient[1 + 2*W + k] -=  mu[k] / (mu_std * mu_std);
 
 	// partials of g normal
+	timer_gnormal.tic(k);
+
 	matrix_d dqdlamk = (q_s[k].array() * d_inter.array()).matrix();
 	dQdlamk = (Q_s[k].array() * d_knots.array()).matrix(); // use as above (so fix denom)
 
-	vector_d dAdlamk;
-
-	dAdlamk =  lambda_inv[k] * lambda_inv[k] * (- dqdlamk + q_s[k] * Q_s_inv[k] * dQdlamk) * Q_s_inv[k]; 
-
 	for (int t=0; t<T; ++t){
-
-	  //dAdlamk *= dAdlamk * alpha_t[k*(T-1)+t];
-
 	  for (int n=0; n<N; ++n){
 
 	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
@@ -975,7 +992,6 @@ public:
       	    double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
 	    int idx_cell  = n*T+t;
-
 
 	    gradient[1 + 2*W + k] += AoverB;
 
@@ -986,25 +1002,25 @@ public:
 
 	    // wrt sigma
 	    if (t > 0){
-	      // uncomment the next line only!
 	      gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
-	      
-	      //gradient[1 + W + k]  +=  (- 0.5 / B + 2 * AoverB * AoverB ) * dBdlamk;
-	      //gradient[1 + W + k] -= AoverB * dAdlamk;
 	    }
 
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_s  = 1 + W*3 + W*T +  k*N_knots + v; 
-	      // wrt alpha_s
+	      // wrt alph_s
 	      gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
 	    }
 
       	  } // n
       	} // t
 
+	timer_gnormal.toc(k);
+
 	gradient[1 + k] = gradient[1 + k] * sigma_ja[k] + sigma_dj[k];
 
 	// partials of g normal
+
+	timer_gnormal2.tic(k);
 
 	matrix_d dq = (q_s[k].array() * d_inter.array()).matrix();
 	matrix_d dQ = (Q_s[k].array() * d_knots.array()).matrix();
@@ -1013,8 +1029,8 @@ public:
 	matrix_d dBdlam;
 	matrix_d qt = q_s[k].transpose();
 
-	dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq + q_s[k] * Q_s_inv[k] * dQ) * Q_s_inv[k]; 
-	dBdlam = -dq * Q_s_inv[k] * qt + q_s[k] * Q_s_inv[k] * dQ * Q_s_inv[k] * qt - q_s[k] * Q_s_inv[k] * dq.transpose();
+	dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq + H_t[k] * dQ) * Q_s_inv[k]; 
+	dBdlam = -dq * Q_s_inv[k] * qt + H_t[k] * dQ * Q_s_inv[k] * qt - H_t[k] * dq.transpose();
 	dBdlam = dBdlam * sigma2[k] * lambda_inv[k] * lambda_inv[k];
 
 	for (int t=0; t<(T-1); ++t){
@@ -1026,7 +1042,7 @@ public:
 
 	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
 	    double B      = var_g[k][n*T+t+1];
-      	    double B2inv  = 1/(B*B);
+      	    //double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
 
 	    // uncomment these lines for lambda grad
@@ -1042,7 +1058,7 @@ public:
 
 	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
 	    double B      = var_g[k][n*T+t+1];
-      	    double B2inv  = 1/(B*B);
+      	    //double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
@@ -1051,10 +1067,15 @@ public:
       	  } // n
       	} // t
 
+	timer_gnormal.toc(k);
+
+
 	// partial of MVN for alpha_t (wrt alpha_t)
 	vector_d Qinv_alphat_next;
 	vector_d Qinv_alphat_now;
 	vector_d Qinv_alphat_first;
+	
+	timer_alphat.tic(k);
 
 	for (int t=0; t<(T-1); ++t) {
 
@@ -1077,7 +1098,12 @@ public:
 	  }
 	}
 
+	timer_alphat.toc(k);
+
+
 	// partial of dirmult
+
+	timer_dirmult.tic(k);
 	for (int t=0; t<T; ++t) {
 	  for (int i=0; i<N_cores; ++i) {
 
@@ -1094,9 +1120,9 @@ public:
 		double dirmultp2 = digamma(y[si][m] + kappa(si,m)) - digamma(kappa(si,m));
 		double out_sum_si_m = out_sum(si,m);
 
-		// this accumulates dkappa_itm
-		double dkappa = 0.0;
 		double drnew, dr;
+
+		const double fac1 = (dirmultp1 + dirmultp2) * phi[m];
 
 		for (int c=0; c<N; ++c) {
 
@@ -1104,45 +1130,49 @@ public:
 		  const double sumgp1 = 1 + sum_exp_g[C];
 		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 
-		  double tmp22 = 0.0;
+		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * invsumw2;
+		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * invsumw2;
 
 		  for (int mp=0; mp<K; ++mp) {
 
 		    // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
-		    if (mp == m) {
-		      drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * invsumw2;
-		    } else {
-		      drnew = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * invsumw2  ;
-		    }
+		    drnew = (mp == m) ? drnew1 : drnew2;
 
 		    // compute dr = \partial r_{ctm'} / \partial g{ctk}
-		    if (mp == K-1) {
+		    if ((mp != K-1) && (mp != k)) {
+		      dr = -exp_g(C,mp) * exp_g(C,k) * sumgp1inv2;
+		    } else if (mp == K-1) {
 		      dr = -exp_g(C,k) * sumgp1inv2;
 		    } else if (mp == k) {
 		      dr = exp_g(C,mp) * (sumgp1 - exp_g(C,mp)) * sumgp1inv2;
-		    } else {
-		      dr = -exp_g(C,mp) * exp_g(C,k) * sumgp1inv2;
 		    }
 
-		    // accumulate dkappa
-		    dkappa += phi[m] * drnew * dr;
-
-		    // save (dirmultp1 + dirmultp2) * phi[m] * drnew * dr
-		    int idx = 1 + W*3 + W*T + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;//K + W*N_knots*T + k*N*T + c*T + t;
-		    gradient[idx] += (dirmultp1 + dirmultp2) * phi[m] * drnew * dr;
+		    int idx = 1 + W*3 + W*T + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
+		    gradient[idx] += fac1 * drnew * dr;
 		  } // mp
-
 		} // c
-
 	      } // m
 	    } // if
 	  } // i
 	} // t
+	timer_dirmult.toc(k);
 	
       } // k
 
       std::cout<<"LP -----> " << lp << std::endl;
 
+      timer_fac.echo(" > fac    ");
+      timer_varg.echo(" > varg   ");
+      timer_rnew.echo(" > rnew   ");
+      timer_lgamma.echo(" > lgamma ");
+      timer_mvn.echo(" > mvn    ");
+      timer_gnormal.echo(" > gnorm  ");      
+      timer_gnormal2.echo(" > gnorm2 ");      
+      timer_alphat.echo(" > alphat ");      
+      timer_dirmult.echo(" > dirmult");      
+
+      timer_lpg.toc(0);
+      timer_lpg.echo("=> lpg    ");
       return lp;
     }
 
