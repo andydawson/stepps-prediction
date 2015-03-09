@@ -905,8 +905,6 @@ public:
 
       timer_lgamma.toc(0);
 
-      std::cout << "Finished LP " << std::endl;
-
       gradient.fill(0.0);
 
       for (int k=0; k<W; ++k)
@@ -1029,9 +1027,16 @@ public:
 	matrix_d dBdlam;
 	matrix_d qt = q_s[k].transpose();
 
-	dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq + H_t[k] * dQ) * Q_s_inv[k]; 
-	dBdlam = -dq * Q_s_inv[k] * qt + H_t[k] * dQ * Q_s_inv[k] * qt - H_t[k] * dq.transpose();
+	matrix_d Ht_dQ_Qsinv = H_t[k] * dQ * Q_s_inv[k];
+	matrix_d dq_Q_s_inv  = dq * Q_s_inv[k];
+
+	dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq_Q_s_inv + Ht_dQ_Qsinv ); 
+	dBdlam = ( - dq_Q_s_inv + Ht_dQ_Qsinv ) * qt - H_t[k] * dq.transpose();
 	dBdlam = dBdlam * sigma2[k] * lambda_inv[k] * lambda_inv[k];
+
+	// dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq + H_t[k] * dQ) * Q_s_inv[k]; 
+	// dBdlam = -dq * Q_s_inv[k] * qt + H_t[k] * dQ * Q_s_inv[k] * qt - H_t[k] * dq.transpose();
+	// dBdlam = dBdlam * sigma2[k] * lambda_inv[k] * lambda_inv[k];
 
 	for (int t=0; t<(T-1); ++t){
 	  
@@ -1042,7 +1047,6 @@ public:
 
 	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
 	    double B      = var_g[k][n*T+t+1];
-      	    //double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
 
 	    // uncomment these lines for lambda grad
@@ -1058,8 +1062,8 @@ public:
 
 	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
 	    double B      = var_g[k][n*T+t+1];
-      	    //double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
+
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_t = 1 + W*3 + W*T + W*N_knots + (k*(T-1) + t)*N_knots + v;
 	      gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
