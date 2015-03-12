@@ -1,1 +1,3 @@
-#$# git-fat 22f93cbb603252de945c77ff25ee61867f5cce18                   20
+*.rdata filter=fat -crlf
+*.csv filter=fat -crlf
+
