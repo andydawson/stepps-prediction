@@ -79,9 +79,9 @@ private:
     static double const ksi_lb = 0;
     static double const ksi_ub = 20;
     static double const sigma_lb = 0;
-    static double const sigma_ub = 100;
+    static double const sigma_ub = 10;
     static double const lambda_lb = 0;
-    static double const lambda_ub = 2;
+    static double const lambda_ub = 1;
 
     static double const mu_std = 20;
 
