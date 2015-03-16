@@ -35,10 +35,10 @@ if (!file.exists(paste0(subDir, '/post.rdata'))){
   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
   fit = read_stan_csv(fname)
   post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
-  save(post, file=paste0(subDir, '/post.rdata'))
+  save(post, file=paste0('output/', suff_fit,'.rdata'))
   rm(fit)
 } else {
-  load(paste0(subDir, '/post.rdata'))
+  load(paste0('output/', suff_fit,'.rdata'))
 }
 
 W = K-1
@@ -72,7 +72,8 @@ adj_t = adj$adj_t
 ####################################################################################################
 
 # process_out = build_props(post, rho, eta, tau, mu, alpha, N_knots, T, K, K)
-process_out = build_props_mut(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
+#process_out = build_props_mut(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
+process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
 # save(process_out, file='r/pred/dump/process_out.rdata')
 # rm(post)
 
