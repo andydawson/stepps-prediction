@@ -457,6 +457,161 @@ build_props_mut <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, 
   return(list(r=r, g=g, sumHalpha=sumHalpha, Halpha=Halpha))
 }
 
+build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut){
+  
+  N = nrow(d_inter)
+  N_knots = ncol(d_inter)
+  niter   = dim(post[,1,])[1] 
+  
+  W = K-1
+  
+  mu_g = array(NA, dim=c(N*T, W, niter))
+  g    = array(NA, dim=c(N*T, W, niter))
+  r    = array(NA, dim=c(N*T, K, niter))
+  #   Halpha = array(NA, dim=c(N_knots, W, niter))
+  ones = matrix(1, nrow=N*T, ncol=1)
+  
+  Halpha_s = array(NA, dim=c(N, W, niter))
+  Halpha_t = array(NA, dim=c(N, W*(T-1), niter))
+  #sumHalpha = array(NA, dim=c(T, W, niter))
+  
+  print("Done allocating")
+  
+  col_names  = colnames(post[,1,])
+  col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
+  
+  ksi    = post[,1, which(col_substr == 'ksi')]
+  
+  alpha_s_start = min(which(col_substr == 'alpha_s'))
+  alpha_t_start = min(which(col_substr == 'alpha_t'))
+   
+#   if (od){
+#     x = matrix(1, nrow=(N*T), ncol=1)
+#     N_p = N*T
+#     
+#     temp = qr(x)
+#     Q = qr.Q(temp)
+#     #     R = qr.R(temp)
+#     
+#     #     P = Q %*% t(Q)
+#   }
+  
+  for (k in 1:W){
+    print(k)
+    
+    mu     = post[,1,which(col_substr == 'mu')[k]]
+    sigma  = post[,1,which(col_substr == 'sigma')[k]]
+    lambda = post[,1,which(col_substr == 'lambda')[k]]
+    
+    mut_cols = seq(k, T*W, by=W)
+    col_names[which(col_substr == 'mu_t')[mut_cols]]
+    mu_t = post[,1,which(col_substr == 'mu_t')[mut_cols]]
+    
+    alpha_s_cols = seq(alpha_s_start + k - 1, alpha_s_start + N_knots*W - 1, by=W)
+    col_names[alpha_s_cols]
+    alpha_s = post[,1,alpha_s_cols]
+    
+    #     g    = array(NA, dim=c(N*T, W, niter))
+    g_cols = seq(k, T*N*W, by=W)
+    col_names[which(col_substr == 'g')][g_cols]
+    g[,k,] = t(post[,1,which(col_substr == 'g')[g_cols]])
+
+    C_s <- exp(-d_knots/rho[k])
+    c_s <- exp(-d_inter/rho[k])
+    C_s_inv = chol2inv(chol(C_s))
+    
+    cs_Csinv = c_s %*% C_s_inv
+
+    for (i in 1:niter){
+      print(i)
+      
+      # t=1
+      mu_g_idx = seq(1, N*T, by=T)
+      mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,1] + cs_Csinv %*% alpha_s[i,]
+      
+      Q <- exp(-d_knots/lambda[i])
+      q <- exp(-d_inter/lambda[i])
+      Q_inv = chol2inv(chol(Q))
+      
+      q_Qinv = q %*% Q_inv
+    
+      for (t in 2:T){
+      
+        alpha_t_cols = seq(alpha_t_start + (k-1)*(T-1) + t-1 - 1, alpha_t_start + N_knots*W*(T-1) - 1, by=W*(T-1))
+        col_names[alpha_t_cols]
+        alpha_t = post[,1,alpha_t_cols]
+        
+        mu_g_idx = seq(t, N*T, by=T)
+        mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+        
+      
+      }
+    }
+  }
+  
+  for (i in 1:niter){
+    
+    sum_exp_g = rowSums(exp(g[,,i]))
+    
+    #     ti <- proc.time()
+    
+    # additive log-ratio transformation
+    # r    = array(NA, dim=c(N*T, K, niter))
+    for (k in 1:W)
+      for (j in 1:(N*T))
+        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
+    
+    for (j in 1:(N*T))
+      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
+    #     
+    #     tj <- proc.time()
+    #     print("OLD Build r:")
+    #     print(tj-ti)
+    #     
+    #     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    #     tk <- proc.time()
+    #     print("NEW Build r:")
+    #     print(tk-tj)
+  }
+  
+  return(list(mu_g=mu_g, r=r, g=g))
+}
+
+
+get_corrections <- function(post, rho, eta, T, K, d_inter, d_knots){
+  
+  N     = nrow(d_inter)
+  niter = dim(post[,1,])[1] 
+  
+  W = K-1
+  col.names = colnames(post[,1,])
+
+  col_substr = substr(colnames(post[,1,]),1,2)
+
+  adj_s = array(NA, dim=c(N, W))
+  adj_t = array(NA, dim=c(N, W))
+  
+  sigma  = colMeans(post[,1,which(col_substr == 'si')])
+  lambda = colMeans(post[,1,which(col_substr == 'la')])
+  
+  for (k in 1:W){
+
+    C_s <- exp(-d_knots/rho[k])
+    c_s <- exp(-d_inter/rho[k])
+    C_s_inv = chol2inv(chol(C_s))
+    
+    adj_s[,k] = eta[k]^2 * (1 - diag(c_s %*% C_s_inv %*% t(c_s)))
+
+    Q <- exp(-d_knots/lambda[k])
+    q <- exp(-d_inter/lambda[k])
+    Q_inv = chol2inv(chol(Q))
+    
+    adj_t[,k] = sigma[k]^2 * (1 - diag(q %*% Q_inv %*% t(q)))
+  }
+  
+  return(list(adj_s=adj_s, adj_t=adj_t))
+}
+
 
 get_mut <- function(post, N_pars){
 #   W = K-1

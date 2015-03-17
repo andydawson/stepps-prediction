@@ -70,9 +70,7 @@ adj_t = adj$adj_t
 ####################################################################################################
 # chunk: compute and plot proportion chains
 ####################################################################################################
-
-# process_out = build_props(post, rho, eta, tau, mu, alpha, N_knots, T, K, K)
-#process_out = build_props_mut(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
+function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
 process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
 # save(process_out, file='r/pred/dump/process_out.rdata')
 # rm(post)
@@ -86,39 +84,39 @@ process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mp
 # # Halpha
 
 
-######################################
-# check if need further OD
-mu_t       = get_mut(post, N_pars=W)
-sum_Halpha = process_out$sumHalpha
-
-pdf(file=paste0(subDir, '/compare_mu_Halpha.pdf'), width=8, height=8)
-for (k in 1:W){
-  par(mfrow=c(3,2))
-  par(oma=c(0,0,2,0))
-  for (t in 1:3){
-    plot(mu_t[t,k,], type="l", ylab=paste0('mu_t[', t, ',', k, ']'))
-  #   lines(mu_t[t+1,1,], col="blue")
-    plot(sum_Halpha[t,k,], type="l", ylab=paste0('sum_Halpha[', t, ',', k, ']'))
-
-  }
-  title(main=taxa[k], outer=TRUE)
-}
-dev.off()
-
-mu_t_int = colSums(mu_t[,1,])
-
-mu = get_mu(post, N_pars=W)
-
-mu_t_int - mu[,1]
-
-pdf(file=paste0(subDir, '/compare_mus.pdf'), width=8, height=6)
-for (k in 1:W){
-  mu_t_int = colSums(mu_t[,k,])
-  par(mfrow=c(2,1))
-  plot(mu_t_int, type='l', ylab=paste0('int(mu_t[t, ', k, '])'))
-  plot(mu[,k], type='l',  ylab=paste0('mu[', k, ']'), col='black')
-}
-dev.off()
+# ######################################
+# # check if need further OD
+# mu_t       = get_mut(post, N_pars=W)
+# sum_Halpha = process_out$sumHalpha
+# 
+# pdf(file=paste0(subDir, '/compare_mu_Halpha.pdf'), width=8, height=8)
+# for (k in 1:W){
+#   par(mfrow=c(3,2))
+#   par(oma=c(0,0,2,0))
+#   for (t in 1:3){
+#     plot(mu_t[t,k,], type="l", ylab=paste0('mu_t[', t, ',', k, ']'))
+#   #   lines(mu_t[t+1,1,], col="blue")
+#     plot(sum_Halpha[t,k,], type="l", ylab=paste0('sum_Halpha[', t, ',', k, ']'))
+# 
+#   }
+#   title(main=taxa[k], outer=TRUE)
+# }
+# dev.off()
+# 
+# mu_t_int = colSums(mu_t[,1,])
+# 
+# mu = get_mu(post, N_pars=W)
+# 
+# mu_t_int - mu[,1]
+# 
+# pdf(file=paste0(subDir, '/compare_mus.pdf'), width=8, height=6)
+# for (k in 1:W){
+#   mu_t_int = colSums(mu_t[,k,])
+#   par(mfrow=c(2,1))
+#   plot(mu_t_int, type='l', ylab=paste0('int(mu_t[t, ', k, '])'))
+#   plot(mu[,k], type='l',  ylab=paste0('mu[', k, ']'), col='black')
+# }
+# dev.off()
 #######################################
 
 # load(file='r/pred/dump/process_out.rdata')
