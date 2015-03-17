@@ -30,7 +30,7 @@ create_figure_path(subDir)
 
 load(paste('r/dump/pred_data_', suff_dat, '.rdata', sep=''))
 
-if (!file.exists(paste0(subDir, '/post.rdata'))){
+if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
   fname = sprintf('output/%s.csv', suff_fit)
   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
   fit = read_stan_csv(fname)
@@ -49,8 +49,12 @@ W = K-1
 N_pars = 3*W + 1
 
 trace_plot_pars(post, N_knots, T, N_pars, taxa=taxa, suff=suff, save_plots=save_plots)
+
+# fix this!!!
 # trace_plot_knots(fit, N_knots, T, K, N_pars=K, suff=suff, save_plots=save_plots)
-trace_plot_mut(post, N_knots, T, N_pars, mean_type='other', suff=suff, save_plots=save_plots)
+
+#fix this!!!
+#trace_plot_mut(post, N_knots, T, N_pars, mean_type='other', suff=suff, save_plots=save_plots)
 
 # col_substr = substr(names(summary(fit)$summary[,'mean']),1,2)
 # 
@@ -63,6 +67,18 @@ trace_plot_mut(post, N_knots, T, N_pars, mean_type='other', suff=suff, save_plot
 # 
 # summary(fit)$summary[,'mean'][1:(2+W-1)]
 
+npars = 3*W+1
+
+# write mean vals to file
+# sink(sprintf('%s/%s/summary.txt', wd, path_figs1), type='output')
+sink(sprintf('%s/summary.txt', subDir), type='output')
+print('The taxa modelled are:')
+taxa
+cat('\n')
+print('Summary of posterior parameter vals:')
+get_quants(post, npars)
+sink()
+
 adj = get_corrections(post, rho, eta, T, K, d_inter, d_knots)
 adj_s = adj$adj_s
 adj_t = adj$adj_t
@@ -70,7 +86,6 @@ adj_t = adj$adj_t
 ####################################################################################################
 # chunk: compute and plot proportion chains
 ####################################################################################################
-function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
 process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
 # save(process_out, file='r/pred/dump/process_out.rdata')
 # rm(post)
