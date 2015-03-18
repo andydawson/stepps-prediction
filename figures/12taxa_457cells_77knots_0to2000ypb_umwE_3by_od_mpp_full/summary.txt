@@ -1,0 +1,15 @@
+[1] "The taxa modelled are:"
+ [1] "ASH"            "BEECH"          "BIRCH"          "ELM"            "HEMLOCK"        "MAPLE"         
+ [7] "OAK"            "OTHER.CONIFER"  "OTHER.HARDWOOD" "PINE"           "SPRUCE"         "TAMARACK"      
+
+[1] "Summary of posterior parameter vals:"
+          ksi      sigma[1]      sigma[2]      sigma[3]      sigma[4]      sigma[5]      sigma[6]      sigma[7] 
+  0.022764672   0.405502797   0.516960109   0.353421154   0.245728692   0.303205680   0.372793320   0.646804102 
+     sigma[8]      sigma[9]     sigma[10]     sigma[11]     lambda[1]     lambda[2]     lambda[3]     lambda[4] 
+  0.416962051   0.694409679   0.854133562   0.572633755   0.009784686   0.008353292   0.025448017   0.029487704 
+    lambda[5]     lambda[6]     lambda[7]     lambda[8]     lambda[9]    lambda[10]    lambda[11]         mu[1] 
+  0.057996890   0.023046786   0.052323572   0.017224215   0.025794536   0.038203737   0.037263384  -0.502925759 
+        mu[2]         mu[3]         mu[4]         mu[5]         mu[6]         mu[7]         mu[8]         mu[9] 
+-20.499177610   5.887255610  -0.376562328  -2.049759783 -19.949599860  11.691074620  -0.060155580  -1.892142061 
+       mu[10]        mu[11] 
+ -8.604075225  -3.666160161 

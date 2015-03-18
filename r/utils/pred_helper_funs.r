@@ -523,7 +523,6 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
     cs_Csinv = c_s %*% C_s_inv
 
     for (i in 1:niter){
-      print(i)
       
       # t=1
       mu_g_idx = seq(1, N*T, by=T)
@@ -549,6 +548,7 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
     }
   }
   
+  print("Log-ratio transforming g")
   for (i in 1:niter){
     
     sum_exp_g = rowSums(exp(g[,,i]))
@@ -1410,4 +1410,22 @@ split_mi <- function(meta){
   
   return(meta)
   
+}
+
+get_quants <- function(post, npars){
+  
+  col_names  = colnames(post[,1,])
+#   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
+  
+  quants <- colMeans(post[,1,1:npars])
+  
+#   quants <- cbind(summary(fit)$summary[,'mean'][1:npars],
+#                   summary(fit)$summary[,'2.5%'][1:(npars)],
+#                   summary(fit)$summary[,'50%'][1:(npars)],
+#                   summary(fit)$summary[,'97.5%'][1:(npars)],
+#                   summary(fit)$summary[,'n_eff'][1:(npars)],
+#                   summary(fit)$summary[,'Rhat'][1:(npars)])
+#   colnames(quants) = c('mean', '2.5%', '50%', '97.5%', 'n_eff', 'Rhat')
+  
+  return(quants)
 }
