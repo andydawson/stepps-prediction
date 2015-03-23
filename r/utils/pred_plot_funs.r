@@ -73,7 +73,8 @@ trace_plot_mut <- function(post, N_knots, T, N_pars, taxa, mean_type='other', su
   n    = dim(post)[3]
   
   #idx_pars = seq(3+N_pars+1, 3+N_pars+W*T)
-  idx_pars = seq(N_pars+1, N_pars+W*T)
+  #idx_pars = seq(N_pars+1, N_pars+W*T)
+  idx_pars = seq(N_pars+1, N_pars+W*(T-1))
   
   if (mean_type=='MRF'){
     idx_pars = seq(3, 3+W*T)
@@ -85,15 +86,17 @@ trace_plot_mut <- function(post, N_knots, T, N_pars, taxa, mean_type='other', su
   
 #   avg = summary(fit)$summary[,"mean"]
   
-  par(mfrow=c(5,2))
+  
   if (save_plots){
     pdf(paste(fpath, "/trace_mut.pdf", sep=""), width=6, height=12)
     par(mfrow=c(5,2))
   }
   
   for (k in 1:W){
+    par(mfrow=c(5,2))
     print(k)
-    idx_taxon = seq(k, W*T, by=W)
+    idx_taxon = seq(k, W*(T-1), by=W)
+    #idx_taxon = seq(k, W*T, by=W)
     idx = idx_pars[idx_taxon]
     labels = colnames(post[,1,])[idx]
     draws = post[,1,idx]
@@ -173,7 +176,7 @@ trace_plot_knots <- function(fit, N_knots, T, K, N_pars, suff=suff, save_plots=T
 # trace plots
 # fit is a stanfit object
 # can pass true values as a list if known
-trace_plots_props <- function(r, suff=suff, save_plots, fpath=subDir){
+trace_plot_process <- function(r, suff=suff, save_plots, fpath=subDir){
   
   K = dim(r)[2] # n taxa
   
@@ -181,13 +184,14 @@ trace_plots_props <- function(r, suff=suff, save_plots, fpath=subDir){
   
   par(mfrow=c(4,2))
   if (save_plots){
-    pdf(paste(fpath, "/trace_props_", suff, ".pdf", sep=""), width=8, height=4)
+    if (nchar(suff)>0) suff1 = paste0('_', suff)
+    pdf(paste(fpath, "/trace", suff1, ".pdf", sep=""), width=8, height=4)
     par(mfrow=c(1,1))
   }
   
   for (i in 1:10){
     for (k in 1:K){
-      plot(r[i,k,], type="l", col=cols[k], ylab=paste('r',i, 'taxon', k, sep=' '), 
+      plot(r[i,k,], type="l", col=cols[k], ylab=paste(suff, i, 'taxon', k, sep=' '), 
            xlab="iter", ylim=c(min(r[i,k,]),max(r[i,k,])))
     }
   }

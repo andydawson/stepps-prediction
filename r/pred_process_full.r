@@ -6,8 +6,12 @@ library(fields)
 source('r/utils/pred_plot_funs.r')
 source('r/utils/pred_helper_funs.r')
 
-suff_dat = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3'
-suff_fit = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_od_mpp_full'#_mut2'
+# suff_dat = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3'
+# suff_fit = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_od_mpp_full'
+# suff_dat = '12taxa_459cells_77knots_0to2000ypb_umwW_3by_v0.3'
+# suff_fit = '12taxa_459cells_77knots_0to2000ypb_umwW_3by_od_mpp_full'
+suff_dat = '12taxa_459cells_77knots_0to2000ypb_umwW_3by_v0.3'
+suff_fit = '12taxa_459cells_77knots_0to2000ypb_umwW_3by_mpp_full_nug_mu0'
 
 # where to put the figures
 subDir <- paste("figures/", suff_fit, sep='')
@@ -20,6 +24,7 @@ suff = ''
 # mut        = FALSE
 # save_plots = TRUE
 
+mu0        = TRUE
 od         = TRUE
 bt         = TRUE
 mpp        = TRUE
@@ -49,25 +54,10 @@ W = K-1
 N_pars = 3*W + 1
 
 trace_plot_pars(post, N_knots, T, N_pars, taxa=taxa, suff=suff, save_plots=save_plots)
+trace_plot_mut(post, N_knots, T, N_pars, mean_type='other', suff=suff, save_plots=save_plots)
 
-# fix this!!!
-# trace_plot_knots(fit, N_knots, T, K, N_pars=K, suff=suff, save_plots=save_plots)
-
-#fix this!!!
-#trace_plot_mut(post, N_knots, T, N_pars, mean_type='other', suff=suff, save_plots=save_plots)
-
-# col_substr = substr(names(summary(fit)$summary[,'mean']),1,2)
-# 
-# tau   = summary(fit)$summary[,'mean'][which(col_substr == 'ta')]
-# mu    = summary(fit)$summary[,'mean'][which(col_substr == 'mu')]
-# alpha = summary(fit)$summary[,'mean'][which(col_substr == 'al')]
-# 
-# ksi     = summary(fit)$summary[,'mean'][which(col_substr == 'ks')]
-# omega   = summary(fit)$summary[,'mean'][which(col_substr == 'om')]
-# 
-# summary(fit)$summary[,'mean'][1:(2+W-1)]
-
-npars = 3*W+1
+## fix this!!!
+#trace_plot_knots(fit, N_knots, T, K, N_pars=N_pars, suff=suff, save_plots=save_plots)
 
 # write mean vals to file
 # sink(sprintf('%s/%s/summary.txt', wd, path_figs1), type='output')
@@ -76,17 +66,17 @@ print('The taxa modelled are:')
 taxa
 cat('\n')
 print('Summary of posterior parameter vals:')
-get_quants(post, npars)
+get_quants(post, N_pars)
 sink()
 
 adj = get_corrections(post, rho, eta, T, K, d_inter, d_knots)
 adj_s = adj$adj_s
 adj_t = adj$adj_t
-
+`
 ####################################################################################################
 # chunk: compute and plot proportion chains
 ####################################################################################################
-process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut)
+process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)
 # save(process_out, file='r/pred/dump/process_out.rdata')
 # rm(post)
 
@@ -135,10 +125,14 @@ process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mp
 #######################################
 
 # load(file='r/pred/dump/process_out.rdata')
+mu_g   = process_out$mu_g
 r_pred = process_out$r
-g = process_out$g
-# trace_plots_props(r_pred, suff=suff, save_plots=save_plots)
+g      = process_out$g
 rm(process_out)
+
+trace_plot_process(mu_g, suff='mu_g', save_plots=save_plots)
+trace_plot_process(r_pred, suff='r', save_plots=save_plots)
+trace_plot_process(g, suff='g', save_plots=save_plots)
 
 
 r_mean = matrix(NA, nrow=N*T, ncol=K)
@@ -166,7 +160,7 @@ suff1.1=paste(suff_fit, '_props_select', sep='')
 plot_pred_maps_select(r_mean, centers_veg, taxa=taxa, ages, N, K, T, thresh=0.5, limits, type='prop', suff=suff1.1,  save_plots=save_plots)
 
 breaks = c(0, 0.01, 0.05, 0.10, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 1)
-p_binned <- plot_pred_maps_binned(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff=suff1, save_plots=save_plots)
+# p_binned <- plot_pred_maps_binned(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff=suff1, save_plots=save_plots)
 p_binned <- pred_maps_binned_select(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff1, save_plots, fpath=subDir)
 ####################################################################################################
 # chunk: predicted process maps
