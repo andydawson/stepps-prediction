@@ -457,7 +457,7 @@ build_props_mut <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, 
   return(list(r=r, g=g, sumHalpha=sumHalpha, Halpha=Halpha))
 }
 
-build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut){
+build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0){
   
   N = nrow(d_inter)
   N_knots = ncol(d_inter)
@@ -503,7 +503,11 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
     sigma  = post[,1,which(col_substr == 'sigma')[k]]
     lambda = post[,1,which(col_substr == 'lambda')[k]]
     
-    mut_cols = seq(k, T*W, by=W)
+    if (mu0){
+      mut_cols = seq(k, (T-1)*W) 
+    } else {
+      mut_cols = seq(k, T*W, by=W)
+    }
     col_names[which(col_substr == 'mu_t')[mut_cols]]
     mu_t = post[,1,which(col_substr == 'mu_t')[mut_cols]]
     
@@ -526,8 +530,13 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
       
       # t=1
       mu_g_idx = seq(1, N*T, by=T)
-      mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,1] + cs_Csinv %*% alpha_s[i,]
       
+      if (mu0){
+        mu_g[mu_g_idx,k,i] = mu[i] + cs_Csinv %*% alpha_s[i,]
+      } else {
+        mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,1] + cs_Csinv %*% alpha_s[i,]
+      }
+        
       Q <- exp(-d_knots/lambda[i])
       q <- exp(-d_inter/lambda[i])
       Q_inv = chol2inv(chol(Q))
@@ -541,8 +550,11 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
         alpha_t = post[,1,alpha_t_cols]
         
         mu_g_idx = seq(t, N*T, by=T)
-        mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
-        
+        if (mu0){
+          mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+        } else {
+          mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+        }
       
       }
     }
