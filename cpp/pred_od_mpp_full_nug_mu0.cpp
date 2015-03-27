@@ -63,13 +63,16 @@ private:
     int W;
     vector_d eta2;
     vector_d zeros;
+    vector_d ones;
     matrix_d Eye_knots;
     vector<matrix_d> C_s;
     vector<Eigen::LLT<matrix_d> > llt_s;
     vector<matrix_d> C_s_L;
     vector<matrix_d> C_s_inv;
     vector<matrix_d> c_s;
+    vector<matrix_d> H_s;
     matrix_d M;
+    vector<matrix_d> M_H_s;
 
     Eigen::HouseholderQR<vector_d> qr;
     matrix_d fatQ;
@@ -317,6 +320,8 @@ public:
         eta2 = vector_d(K-1);
         stan::math::validate_non_negative_index("zeros", "N_knots", N_knots);
         zeros = vector_d(N_knots);
+	stan::math::validate_non_negative_index("ones", "N", N);
+	ones = vector_d(N);
         stan::math::validate_non_negative_index("Eye_knots", "N_knots", N_knots);
         stan::math::validate_non_negative_index("Eye_knots", "N_knots", N_knots);
         Eye_knots = matrix_d(N_knots,N_knots);
@@ -336,9 +341,16 @@ public:
         stan::math::validate_non_negative_index("c_s", "N", N);
         stan::math::validate_non_negative_index("c_s", "N_knots", N_knots);
         c_s = std::vector<matrix_d>((K - 1),matrix_d(N,N_knots));
+        stan::math::validate_non_negative_index("H_s", "(K - 1)", (K - 1));
+        stan::math::validate_non_negative_index("H_s", "N", N);
+        stan::math::validate_non_negative_index("H_s", "N_knots", N_knots);
+        H_s = std::vector<matrix_d>((K - 1),matrix_d(N,N_knots));
         stan::math::validate_non_negative_index("M", "(N * T)", (N * T));
         stan::math::validate_non_negative_index("M", "(N * T)", (N * T));
         M = matrix_d((N * T),(N * T));
+	stan::math::validate_non_negative_index("M_H_s", "N", N);
+        stan::math::validate_non_negative_index("M_H_s", "N_knots", N_knots);
+        M_H_s = std::vector<matrix_d>((K-1),matrix_d(N,N_knots));
 
 
 	//vector<double> eta2(K-1);
@@ -353,6 +365,9 @@ public:
         for (int i = 1; i <= N_knots; ++i) {
             stan::math::assign(get_base1_lhs(zeros,i,"zeros",1), 0.0);
         }
+	for (int i = 1; i <= N; ++i) {
+	  stan::math::assign(get_base1_lhs(ones,i,"ones",1), 1.0);
+	}
         for (int i = 1; i <= N_knots; ++i) {
             for (int j = 1; j <= N_knots; ++j) {
                 if (as_bool(logical_eq(i,j))) {
@@ -372,25 +387,28 @@ public:
             }
         }
 
+      qr   = ones.householderQr();
+      fatQ = qr.householderQ();
+      Q    = fatQ.col(0); // thin Q, as returned in R
+      QT = Q.transpose();
+
       llt_s.resize(W);
       c_s.resize(W);
       C_s_L.resize(W);
       C_s_inv.resize(W);
+      H_s.resize(W);
+      M_H_s.resize(W);
 
       for (int k = 0; k < W; ++k) {
 	C_s[k] = exp(-d_knots.array() / rho[k]).matrix();
 
-	llt_s[k]      = C_s[k].llt();
-	C_s_L[k]      = llt_s[k].matrixL();
-	C_s_inv[k]    = llt_s[k].solve(Eigen::MatrixXd::Identity(N_knots,N_knots));
-	c_s[k]        = exp(- 1.0/rho[k] * d_inter.array()).matrix();
-
+	llt_s[k]    = C_s[k].llt();
+	C_s_L[k]    = llt_s[k].matrixL();
+	C_s_inv[k]  = llt_s[k].solve(Eigen::MatrixXd::Identity(N_knots,N_knots));
+	c_s[k]      = exp(- 1.0/rho[k] * d_inter.array()).matrix();
+	H_s[k]      = c_s[k] * C_s_inv[k];
+	M_H_s[k] = H_s[k] - Q * ( QT * H_s[k]); 
       }
-
-      // qr   = ones.householderQr();
-      // fatQ = qr.householderQ();
-      // Q    = fatQ.col(0); // thin Q, as returned in R
-      // QT = Q.transpose();
 
         // validate transformed data
 
@@ -401,7 +419,8 @@ public:
         num_params_r__ += W;
         num_params_r__ += W;
         num_params_r__ += W;
-        num_params_r__ += (T-1) * W;
+        //num_params_r__ += T * W;
+	num_params_r__ += (T-1) * W;
         num_params_r__ += N_knots * W;
         num_params_r__ += N_knots * (W * (T - 1));
         num_params_r__ += (N * T) * W;
@@ -754,7 +773,7 @@ public:
       timer_fac.toc(0);
 
       vector<vector_d> qvar(W);
-      vector<matrix_d> H_s(W);
+      // vector<matrix_d> H_s(W);
       vector<matrix_d> H_t(W);
 
       vector<vector_d> var_g(W);
@@ -773,12 +792,14 @@ public:
       for (int k = 0; k<W; ++k){
       	lp_thrd[k] = multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k], true);
 
-	H_s[k] = c_s[k] * C_s_inv[k];
-	vector_d Halpha_s = H_s[k] * alpha_s[k];
+	// H_s[k] = c_s[k] * C_s_inv[k];
+	//vector_d Halpha_s = H_s[k] * alpha_s[k];
+	vector_d M_Halpha_s = M_H_s[k] * alpha_s[k];
 
       	for (int i = 0; i<N; ++i){
       	  for (int t = 0; t<T; ++t){
-      	    mu_g[k][i * T + t] = Halpha_s[i];
+      	    //mu_g[k][i * T + t] = Halpha_s[i];
+	    mu_g[k][i * T + t] = M_Halpha_s[i];
       	  }
       	}
 
@@ -1010,7 +1031,8 @@ public:
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_s  = 1 + W*3 + W*(T-1) +  k*N_knots + v; 
 	      // wrt alph_s
-	      gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
+	      //gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
+	      gradient[idx_alpha_s] += AoverB * M_H_s[k](n,v);
 	    }
 
       	  } // n
