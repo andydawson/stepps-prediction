@@ -43,8 +43,8 @@ trace_plot_pars <- function(post, N_knots, T, N_pars, taxa, suff=suff, save_plot
   
   par(mfrow=c(4,2))
   if (save_plots){
-    pdf(paste(fpath, "/trace_pars.pdf", sep=""), width=8, height=4)
-    par(mfrow=c(1,1))
+    pdf(paste(fpath, "/trace_pars.pdf", sep=""), width=8, height=12)
+    par(mfrow=c(5,2))
   }
   
   
@@ -88,7 +88,7 @@ trace_plot_mut <- function(post, N_knots, T, N_pars, taxa, mean_type='other', su
   
   
   if (save_plots){
-    pdf(paste(fpath, "/trace_mut.pdf", sep=""), width=6, height=12)
+    pdf(paste(fpath, "/trace_mut.pdf", sep=""), width=8, height=12)
     par(mfrow=c(5,2))
   }
   

@@ -88,6 +88,78 @@ process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mp
 # 
 # # Halpha
 
+mu_g   = process_out$mu_g
+r_pred = process_out$r
+g      = process_out$g
+Halpha_t = process_out$Halpha_t
+Halpha_s = process_out$Halpha_s
+rm(process_out)
+
+niter = dim(post[,1,])[1]
+mean_Halpha_t = array(NA, dim=c(W, T-1, niter))
+
+for (k in 1:W){
+  for (t in 1:(T-1)){
+    mean_Halpha_t[k, t, ] = colSums(Halpha_t[,(k-1)*(T-1)+t,])/N
+  }
+}
+
+mu_t = get_mut(post, N_pars, W)
+
+pdf(file=paste0(subDir, '/trace_Halpha_t.pdf'), width=8, height=12)
+for (k in 1:W){
+    par(mfrow=c(5,2))
+    par(oma=c(0,0,2,0))
+    for (t in 1:(T-1)){
+      plot(mean_Halpha_t[k,t,], type="l", ylab=paste0('mean_Halpha_t[', k, ',', t, ']'))
+      abline(h=mean(mean_Halpha_t[k,t,]), col="blue")
+      abline(h=quantile(mean_Halpha_t[k,t,],probs=0.025), col='blue', lty=2)
+      abline(h=quantile(mean_Halpha_t[k,t,],probs=0.975), col='blue', lty=2)
+  #   lines(mu_t[t+1,1,], col="blue")
+#     plot(sum_Halpha_t[k,t,], type="l", ylab=paste0('sum_Halpha[', k, ',', t, ']'))
+  
+    }
+#     title(main=taxa[k], outer=TRUE)
+}
+dev.off()
+
+
+niter = dim(post[,1,])[1]
+mean_Halpha_s = array(NA, dim=c(W, niter))
+
+for (k in 1:W){
+    mean_Halpha_s[k, ] = colSums(Halpha_s[,k,])/N
+}
+
+mu = get_mu(post, W)
+pdf(file=paste0(subDir, '/trace_mu.pdf'), width=8, height=12)
+par(mfrow=c(5,2))
+par(oma=c(0,0,2,0))
+for (k in 1:W){
+  plot(mu[k,], type="l", ylab=paste0('mu[', k, ']'))
+  abline(h=mean(mu[k,]), col="blue")
+  abline(h=quantile(mu[k,],probs=0.025), col='blue', lty=2)
+  abline(h=quantile(mu[k,],probs=0.975), col='blue', lty=2)
+  #   lines(mu_t[t+1,1,], col="blue")
+  #     plot(sum_Halpha_t[k,t,], type="l", ylab=paste0('sum_Halpha[', k, ',', t, ']'))
+  #     title(main=taxa[k], outer=TRUE)
+}
+dev.off()
+
+pdf(file=paste0(subDir, '/trace_Halpha_s.pdf'), width=8, height=12)
+par(mfrow=c(5,2))
+par(oma=c(0,0,2,0))
+for (k in 1:W){
+  plot(mean_Halpha_s[k,], type="l", ylab=paste0('mean_Halpha_s[', k, ']'))
+  abline(h=mean(mean_Halpha_s[k,]), col="blue")
+  abline(h=quantile(mean_Halpha_s[k,],probs=0.025), col='blue', lty=2)
+  abline(h=quantile(mean_Halpha_s[k,],probs=0.975), col='blue', lty=2)
+    #   lines(mu_t[t+1,1,], col="blue")
+    #     plot(sum_Halpha_t[k,t,], type="l", ylab=paste0('sum_Halpha[', k, ',', t, ']'))
+  #     title(main=taxa[k], outer=TRUE)
+}
+dev.off()
+
 
 # ######################################
 # # check if need further OD
@@ -123,12 +195,6 @@ process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mp
 # }
 # dev.off()
 #######################################
-
-# load(file='r/pred/dump/process_out.rdata')
-mu_g   = process_out$mu_g
-r_pred = process_out$r
-g      = process_out$g
-rm(process_out)
 
 trace_plot_process(mu_g, suff='mu_g', save_plots=save_plots)
 trace_plot_process(r_pred, suff='r', save_plots=save_plots)

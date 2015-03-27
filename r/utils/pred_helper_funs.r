@@ -472,7 +472,12 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
   ones = matrix(1, nrow=N*T, ncol=1)
   
   Halpha_s = array(NA, dim=c(N, W, niter))
-  Halpha_t = array(NA, dim=c(N, W*(T-1), niter))
+  
+  if (mu0){
+    Halpha_t = array(NA, dim=c(N, W*(T-1), niter))
+  } else {
+    Halpha_t = array(NA, dim=c(N, W*T, niter))
+  }
   #sumHalpha = array(NA, dim=c(T, W, niter))
   
   print("Done allocating")
@@ -531,10 +536,12 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
       # t=1
       mu_g_idx = seq(1, N*T, by=T)
       
+      Halpha_s[,k,i] = cs_Csinv %*% alpha_s[i,]
+      
       if (mu0){
-        mu_g[mu_g_idx,k,i] = mu[i] + cs_Csinv %*% alpha_s[i,]
+        mu_g[mu_g_idx,k,i] = mu[i] + Halpha_s[,k,i] #cs_Csinv %*% alpha_s[i,]
       } else {
-        mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,1] + cs_Csinv %*% alpha_s[i,]
+        mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,1] + Halpha_s[,k,i] #cs_Csinv %*% alpha_s[i,]
       }
         
       Q <- exp(-d_knots/lambda[i])
@@ -551,7 +558,8 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
         
         mu_g_idx = seq(t, N*T, by=T)
         if (mu0){
-          mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+          Halpha_t[,(k-1)*(T-1) + t-1,i] = q_Qinv %*% alpha_t[i,] 
+          mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
         } else {
           mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
         }
@@ -586,7 +594,7 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
     #     print(tk-tj)
   }
   
-  return(list(mu_g=mu_g, r=r, g=g))
+  return(list(mu_g=mu_g, r=r, g=g, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
 
@@ -625,16 +633,17 @@ get_corrections <- function(post, rho, eta, T, K, d_inter, d_knots){
 }
 
 
-get_mut <- function(post, N_pars){
+get_mut <- function(post, N_pars, W){
 #   W = K-1
   niters   = dim(post[,1,])[1]
-  idx_pars = seq(3+N_pars+1, 3+N_pars+W*T)
+  #idx_pars = seq(3+N_pars+1, 3+N_pars+W*T)
+  idx_pars = seq(N_pars+1, N_pars+W*(T-1))
 
-  mu_t = array(NA, c(T, N_pars, niters))
+  mu_t = array(NA, c(T-1, W, niters))
   
   for (k in 1:W){
     print(k)
-    idx_taxon = seq(k, W*T, by=W)
+    idx_taxon = seq(k, W*(T-1), by=W)
     idx = idx_pars[idx_taxon]
     colnames(post[,1,])[idx]
     mu_t[,k,] = t(post[,1,idx])
@@ -642,14 +651,14 @@ get_mut <- function(post, N_pars){
   return(mu_t)
 }
 
-get_mu <- function(post, N_pars){
+get_mu <- function(post, W){
   #   W = K-1
   n    = dim(post)[3]
-  idx_pars = seq(3+1, 3+W)
+  idx_pars = seq(1+2*W+1, 1+3*W)
   
-  mu = array(NA, c(N_pars, i))
+  mu = array(NA, c(W, niter))
   
-  mu = post[,1,idx_pars]
+  mu = t(post[,1,idx_pars])
   
   return(mu)
 }
