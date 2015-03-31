@@ -51,6 +51,7 @@ private:
     vector_d eta;
     double gamma;
     double psi;
+    double sum_w_pot;
     vector_d phi;
     vector<int> idx_cores;
     matrix_d d;
@@ -164,6 +165,11 @@ public:
         vals_r__ = context__.vals_r("psi");
         pos__ = 0;
         psi = vals_r__[pos__++];
+        context__.validate_dims("data initialization", "sum_w_pot", "double", context__.to_vec());
+        sum_w_pot = double(0);
+        vals_r__ = context__.vals_r("sum_w_pot");
+        pos__ = 0;
+        sum_w_pot = vals_r__[pos__++];
         stan::math::validate_non_negative_index("phi", "K", K);
         phi = vector_d(K);
         context__.validate_dims("data initialization", "phi", "vector_d", context__.to_vec(K));
@@ -306,6 +312,11 @@ public:
             throw std::domain_error(std::string("Invalid value of psi: ") + std::string(e.what()));
         };
         try {
+            check_greater_or_equal(function__,sum_w_pot,0,"sum_w_pot");
+        } catch (std::domain_error& e) {
+            throw std::domain_error(std::string("Invalid value of sum_w_pot: ") + std::string(e.what()));
+        };
+        try {
             check_greater_or_equal(function__,phi,0,"phi");
         } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of phi: ") + std::string(e.what()));
@@ -419,7 +430,6 @@ public:
         num_params_r__ += W;
         num_params_r__ += W;
         num_params_r__ += W;
-        //num_params_r__ += T * W;
 	num_params_r__ += (T-1) * W;
         num_params_r__ += N_knots * W;
         num_params_r__ += N_knots * (W * (T - 1));
@@ -891,7 +901,8 @@ public:
       	      out_sum.row(i * T + t) += w(i,j) * r.row(j * T + t);
       	    }
       	  }
-      	  sum_w[i*T+t] = out_sum.row(i * T + t).sum();
+      	  //sum_w[i*T+t] = out_sum.row(i * T + t).sum();
+	  sum_w[i*T+t] = sum_w_pot;
       	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
       	}
       }
