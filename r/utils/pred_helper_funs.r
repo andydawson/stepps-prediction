@@ -840,6 +840,63 @@ build_weight_matrix <- function(d, idx_cores, N, N_cores, psi){
   return(w)
 }
 
+# build the total potential neighborhood weighting
+build_sum_w_pot <- function(psi, rescale){
+  
+  x_pot = seq(-528000, 528000, by=8000)
+  y_pot = seq(-416000, 416000, by=8000)
+  coord_pot = expand.grid(x_pot, y_pot)
+  
+  d_pot = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/rescale)
+  d_pot = unname(as.matrix(count(d_pot)))
+  
+  N_pot = nrow(d_pot)
+  
+  sum_w_pot = 0
+  for (v in 1:N_pot){
+    C = C +  d_pot[v,2] *  exp(-(d_pot[v,1]/psi)^2)
+  }
+  return(sum_w_pot)
+}
+
+# rescale gamma when the coarse grid is used
+recompute_gamma <- function(w, sum_w_pot, psi, gamma, d_hood){
+  
+  k = 21
+  weights = w[k, d_hood]
+  gamma_new = gamma + sum(weights) / sum_w_pot
+  
+  return(gamma_new)
+  
+}
+
+# determine which knots are in the domain given a list of cutlines
+# cutlines are a list of two twoples: a point and a direction vector
+choppy <- function(x, y, cutlines) {
+  
+  right = rep(TRUE, length(x))
+  
+  for (cl in cutlines) {
+    x0 = cl[[1]][1]
+    y0 = cl[[1]][2]
+    dx = cl[[2]][1]
+    dy = cl[[2]][2]
+    r1 = sqrt(dx*dx+dy*dy)
+    for (i in 1:length(x)) {
+      rx = x[i] - x0
+      ry = y[i] - y0
+      r2 = sqrt(rx*rx+ry*ry)
+      theta = acos((rx*dy - ry*dx)/r1/r2)
+      #print(c(x0,y0,dx,dy,rx,ry,theta,r1,r2))
+      if (theta > pi/2) {
+        # point is to the left of the line
+        right[i] = FALSE
+      }
+    }
+  }
+  which(right == FALSE)
+}
+
 #make a subgrid of cells
 regular_subgrid <- function(cells, dx, dy, xoff, yoff){
   

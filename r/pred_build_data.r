@@ -6,6 +6,7 @@ library(ggplot2)
 library(mvtnorm)
 library(maptools)
 library(maps)
+library(plyr)
 
 source('r/utils/pred_helper_funs.r')
 
@@ -17,6 +18,8 @@ source('r/utils/pred_helper_funs.r')
 decomp     = TRUE
 bt         = TRUE
 mpp        = TRUE
+
+veg_knots  = TRUE
 
 save_plots = TRUE
 
@@ -30,7 +33,7 @@ mydate = '2014-07-22'
 
 # grid 
 res  = 3
-side = 'E'
+side = ''
 gridname = paste0('umw', side, '_', as.character(res), 'by')
 #gridname = 'umwE_3by'
 
@@ -67,7 +70,7 @@ states_pls = c('minnesota', 'wisconsin', 'michigan:north')
 # states_pls = c('minnesota')
 
 cells = NA
-#cells = seq(1,100)
+# cells = seq(1,100)
 
 # specify the taxa to use
 # must be from the list: taxa_sub = c('oak', 'pine', 'maple', 'birch', 'tamarack', 'beeh', 'elm', 'spruce', 'ash', 'hemlock')
@@ -76,7 +79,7 @@ cells = NA
 taxa_all = toupper(c('oak', 'pine', 'maple', 'birch', 'tamarack', 'beech', 'elm', 'spruce', 'ash', 'hemlock'))
 taxa_sub = toupper(c('oak', 'pine', 'maple', 'birch', 'tamarack', 'beech', 'elm', 'spruce', 'ash', 'hemlock'))
 #taxa_sub = toupper(c('oak', 'pine', 'maple', 'birch', 'tamarack', 'beech'))#, 'elm', 'spruce', 'ash', 'hemlock'))
-#taxa_sub = toupper(c('oak', 'pine', 'maple', 'birch'))
+# taxa_sub = toupper(c('oak', 'pine', 'maple', 'birch'))
 
 K = as.integer(length(taxa_sub) + 1)
 W = K-1
@@ -179,7 +182,7 @@ ylo = min(centers_veg$y)
 yhi = max(centers_veg$y)
 
 ##########################################################################################################################
-## chunk: read in coarse grid and pollen data
+## chunk: reorganize pollen data
 ##########################################################################################################################
 
 ## pollen data!
@@ -204,7 +207,7 @@ points(pollen_ts$x*rescale, pollen_ts$y*rescale, col='blue', pch=19)
 plot(us.shp, add=T, lwd=2)
 
 ##########################################################################################################################
-## chunk 2: prepare pollen data; aggregate over time intervals
+## chunk: prepare pollen data; aggregate over time intervals
 ##########################################################################################################################
 
 # sum counts over int length intervals
@@ -252,64 +255,46 @@ plot(us.shp, add=TRUE)
 ## chunk 3: build distance matrices
 ##########################################################################################################################
 
-# nclust = ceiling(N/clust.ratio)
+if (!veg_knots){
+  nclust = ceiling(N/clust.ratio)
+  d_out = build_domain_objects(centers_veg, dx=20, cell_width=8, nclust=nclust)
+  
+  d = d_out$d
+  # d_knots = d_out$d_knots
+  # d_inter = d_out$d_inter
+  # 
+  knot_coords = d_out$knot_coords
+} else {
+
+  if (side == '') {
+    # don't touch knot_coords
+  } else {
+    if (side == 'W'){
+      if (res == 1) 
+        cutlines = list(list(c(0.42, 1.0), c(0.0, 1.0)), list(c(0.397,1.15), c(0.168,0.119)))
+      if (res == 5) 
+        cutlines = list(list(c(0.386, 1.0), c(0.0, 1.0)), list(c(0.397,1.15), c(0.168,0.119)))
+      if (res == 3) 
+        cutlines = list(list(c(0.405, 1.0), c(0.0, 1.0)), list(c(0.397,1.15), c(0.168,0.119)))
+    } else if (side == 'E'){ 
+      if (res %in% c(1, 5)) cutlines = list(list(c(0.253, 1.0), c(0.0, -1.0)))
+      if (res == 3) cutlines = list(list(c(0.27, 1.0), c(0.0, -1.0)))
+    } 
+    idx = choppy(knot_coords[,1], knot_coords[,2], cutlines)
+    knot_coords = knot_coords[idx,]
+  } 
+}
+
 # 
 # # knot_coords3 = knots_in_domain4(knot_coords, centers_veg, cell_width = res*8000/rescale)
-# 
-# d_out = build_domain_objects(centers_veg, dx=20, cell_width=8, nclust=nclust)
-# 
-# d = d_out$d
-# # d_knots = d_out$d_knots
-# # d_inter = d_out$d_inter
-# # 
-# knot_coords = d_out$knot_coords
-# 
-# plot(centers_veg[,1], centers_veg[,2], asp=1)
-# points(knot_coords[,1], knot_coords[,2], col='red', pch=19)
 
-# knots = knot_coords[which(knot_coords[,1]<0.405),]
-
-choppy <- function(x, y, cutlines) {
-  
-  right = rep(TRUE, length(x))
-  
-  for (cl in cutlines) {
-    x0 = cl[[1]][1]
-    y0 = cl[[1]][2]
-    dx = cl[[2]][1]
-    dy = cl[[2]][2]
-    r1 = sqrt(dx*dx+dy*dy)
-    for (i in 1:length(x)) {
-     rx = x[i] - x0
-     ry = y[i] - y0
-     r2 = sqrt(rx*rx+ry*ry)
-     theta = acos((rx*dy - ry*dx)/r1/r2)
-     #print(c(x0,y0,dx,dy,rx,ry,theta,r1,r2))
-     if (theta > pi/2) {
-       # point is to the left of the line
-       right[i] = FALSE
-     }
-    }
-  }
-  which(right == FALSE)
-}
-
-if (side == '') {
-  # don't touch knot_coords
-} else {
-  if (side == 'W'){
-    cutlines = list(list(c(0.405, 1.0), c(0.0, 1.0)), list(c(0.397,1.15), c(0.168,0.119)))
-  } else if (side == 'E'){
-    cutlines = list(list(c(0.204, 1.0), c(0.0, -1.0)))
-  } 
-  idx = choppy(knot_coords[,1], knot_coords[,2], cutlines)
-  knot_coords = knot_coords[idx,]
-}
-
-plot(domain[,1], domain[,2], asp=1)
+# plot(domain[,1], domain[,2], asp=1)
+plot(centers_veg[,1], centers_veg[,2], asp=1)
 points(knot_coords[,1], knot_coords[,2], col='blue', pch=19)
+# points(knot_coords2[,1], knot_coords2[,2], col='green', pch=19)
 
-
+d = rdist(centers_veg, centers_veg)
+diag(d) <- 0
 
 d_knots = rdist(knot_coords, knot_coords)
 diag(d_knots) <- 0
@@ -319,10 +304,9 @@ d_inter[which(d_inter<1e-8)]=0
 
 N_knots     = nrow(knot_coords)
 
-###
-### vars from estimation phase
-###
-
+##########################################################################################################################
+## chunk: qr decompose X
+##########################################################################################################################
 
 col_substr = substr(names(summary(fit)$summary[,'mean']),1,2)
 
@@ -331,8 +315,6 @@ phi[is.na(phi)] = 20
 psi   = unname(summary(fit)$summary[,'mean']['psi'])
 gamma = unname(summary(fit)$summary[,'mean']['gamma'])
 
-gamma = gamma_coarse
-
 names_substr = substr(names(mean_pars),1,3)
 
 eta = unname(mean_pars[which(names_substr == 'eta')])[1:W]
@@ -340,7 +322,9 @@ rho = unname(mean_pars[which(names_substr == 'rho')])[1:W]
 
 w <- build_weight_matrix(d, idx_cores, N, N_cores, psi)
 
-# recopmute_gamma <- function(w, psi, gamma)
+sum_w_pot <- build_sum_w_pot(psi, rescale)
+
+gamma = recompute_gamma(w, sum_w_pot, psi, gamma, d_hood)
 
 ##########################################################################################################################
 ## chunk: qr decompose X
@@ -354,7 +338,7 @@ Q = qr.Q(temp)
 R = qr.R(temp)
 
 P = Q %*% t(Q)
-M = diag(N_p) - P
+# M = diag(N_p) - P
 
 if (all(P-P[1,1]<1.0e-12)){
   P = P[1,1]
@@ -371,7 +355,7 @@ dump(c('K', 'N', 'T', 'N_cores', 'N_knots',
        'idx_cores', 
        'd', 'd_knots', 'd_inter', 'w',
        'lag',
-       'P', 'N_p'),
+       'P', 'N_p', 'sum_w_pot'),
 #        'knot_coords',
 #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
      file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
@@ -382,7 +366,7 @@ save(K, N, T, N_cores, N_knots,
        idx_cores, 
        d, d_knots, d_inter, w,
        lag,
-       P, N_p,
+       P, N_p, sum_w_pot,
        knot_coords,
        centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
        file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
