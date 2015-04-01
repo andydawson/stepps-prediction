@@ -59,8 +59,8 @@ private:
     matrix_d d_inter;
     matrix_d w;
     matrix_d lag;
-    int N_p;
-    double P;
+    // int N_p;
+    // double P;
     int W;
     vector_d eta2;
     vector_d zeros;
@@ -253,16 +253,16 @@ public:
                 lag(m_mat__,n_mat__) = vals_r__[pos__++];
             }
         }
-        context__.validate_dims("data initialization", "N_p", "int", context__.to_vec());
-        N_p = int(0);
-        vals_i__ = context__.vals_i("N_p");
-        pos__ = 0;
-        N_p = vals_i__[pos__++];
-        context__.validate_dims("data initialization", "P", "double", context__.to_vec());
-        P = double(0);
-        vals_r__ = context__.vals_r("P");
-        pos__ = 0;
-        P = vals_r__[pos__++];
+        // context__.validate_dims("data initialization", "N_p", "int", context__.to_vec());
+        // N_p = int(0);
+        // vals_i__ = context__.vals_i("N_p");
+        // pos__ = 0;
+        // N_p = vals_i__[pos__++];
+        // context__.validate_dims("data initialization", "P", "double", context__.to_vec());
+        // P = double(0);
+        // vals_r__ = context__.vals_r("P");
+        // pos__ = 0;
+        // P = vals_r__[pos__++];
 
         // validate data
         try {
@@ -321,11 +321,11 @@ public:
         } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of phi: ") + std::string(e.what()));
         };
-        try {
-            check_greater_or_equal(function__,N_p,0,"N_p");
-        } catch (std::domain_error& e) {
-            throw std::domain_error(std::string("Invalid value of N_p: ") + std::string(e.what()));
-        };
+        // try {
+        //     check_greater_or_equal(function__,N_p,0,"N_p");
+        // } catch (std::domain_error& e) {
+        //     throw std::domain_error(std::string("Invalid value of N_p: ") + std::string(e.what()));
+        // };
         W = int(0);
         stan::math::validate_non_negative_index("eta2", "K-1", K-1);
         eta2 = vector_d(K-1);
@@ -388,15 +388,15 @@ public:
                 }
             }
         }
-        for (int j = 1; j <= (N * T); ++j) {
-            for (int i = 1; i <= (N * T); ++i) {
-                if (as_bool(logical_eq(i,j))) {
-                    stan::math::assign(get_base1_lhs(M,i,j,"M",1), (1.0 - P));
-                } else {
-                    stan::math::assign(get_base1_lhs(M,i,j,"M",1), -(P));
-                }
-            }
-        }
+        // for (int j = 1; j <= (N * T); ++j) {
+        //     for (int i = 1; i <= (N * T); ++i) {
+        //         if (as_bool(logical_eq(i,j))) {
+        //             stan::math::assign(get_base1_lhs(M,i,j,"M",1), (1.0 - P));
+        //         } else {
+        //             stan::math::assign(get_base1_lhs(M,i,j,"M",1), -(P));
+        //         }
+        //     }
+        // }
 
       qr   = ones.householderQr();
       fatQ = qr.householderQ();
