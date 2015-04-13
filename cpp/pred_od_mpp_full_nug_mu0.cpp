@@ -46,6 +46,7 @@ private:
     int T;
     int N_knots;
     int N_cores;
+    int res;
     vector<vector<int> > y;
     vector_d rho;
     vector_d eta;
@@ -122,6 +123,11 @@ public:
         context__.validate_dims("data initialization", "N_cores", "int", context__.to_vec());
         N_cores = int(0);
         vals_i__ = context__.vals_i("N_cores");
+        pos__ = 0;
+        N_cores = vals_i__[pos__++];
+        context__.validate_dims("data initialization", "res", "int", context__.to_vec());
+        res = int(0);
+        vals_i__ = context__.vals_i("res");
         pos__ = 0;
         N_cores = vals_i__[pos__++];
         context__.validate_dims("data initialization", "y", "int", context__.to_vec((N_cores * T),K));
@@ -289,6 +295,11 @@ public:
             check_greater_or_equal(function__,N_cores,0,"N_cores");
         } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of N_cores: ") + std::string(e.what()));
+        };
+        try {
+            check_greater_or_equal(function__,res,0,"res");
+        } catch (std::domain_error& e) {
+            throw std::domain_error(std::string("Invalid value of res: ") + std::string(e.what()));
         };
         try {
             check_greater_or_equal(function__,rho,0,"rho");
@@ -903,7 +914,7 @@ public:
       	  }
       	  //sum_w[i*T+t] = out_sum.row(i * T + t).sum();
 	  sum_w[i*T+t] = sum_w_pot;
-      	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
+      	  r_new.row(i * T + t) += res * res * out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
       	}
       }
 
