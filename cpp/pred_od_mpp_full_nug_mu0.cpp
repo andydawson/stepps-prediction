@@ -430,6 +430,7 @@ public:
 	c_s[k]      = exp(- 1.0/rho[k] * d_inter.array()).matrix();
 	H_s[k]      = c_s[k] * C_s_inv[k];
 	M_H_s[k] = H_s[k] - Q * ( QT * H_s[k]); 
+	//w = res * res * w;
       }
 
         // validate transformed data
@@ -909,12 +910,12 @@ public:
       	  r_new.row(i * T + t) = gamma * r.row(idx_core);
       	  for (int j = 0; j < N; ++j) {
       	    if (d(idx_cores[i]-1,j) > 0) {
-      	      out_sum.row(i * T + t) += w(i,j) * r.row(j * T + t);
+      	      out_sum.row(i * T + t) += res * res * w(i,j) * r.row(j * T + t);
       	    }
       	  }
       	  //sum_w[i*T+t] = out_sum.row(i * T + t).sum();
 	  sum_w[i*T+t] = sum_w_pot;
-      	  r_new.row(i * T + t) += res * res * out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
+      	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
       	}
       }
 
@@ -1182,8 +1183,8 @@ public:
 		  const double sumgp1 = 1 + sum_exp_g[C];
 		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 
-		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * invsumw2;
-		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * invsumw2;
+		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * res * res * invsumw2;
+		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * res * res * invsumw2;
 
 		  for (int mp=0; mp<K; ++mp) {
 
