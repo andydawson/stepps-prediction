@@ -129,7 +129,7 @@ public:
         res = int(0);
         vals_i__ = context__.vals_i("res");
         pos__ = 0;
-        N_cores = vals_i__[pos__++];
+        res = vals_i__[pos__++];
         context__.validate_dims("data initialization", "y", "int", context__.to_vec((N_cores * T),K));
         stan::math::validate_non_negative_index("y", "(N_cores * T)", (N_cores * T));
         stan::math::validate_non_negative_index("y", "K", K);
