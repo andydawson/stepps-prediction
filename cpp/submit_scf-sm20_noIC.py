@@ -1,23 +1,22 @@
-
 import subprocess
 
 runs = [ ('pred_od_mpp_full_nug_mu0_umwE',
           './pred_od_mpp_full_nug_mu0.exe \
           sample num_warmup=75 num_samples=1000 save_warmup=1\
           data file=../r/dump/pred_data_12taxa_387cells_66knots_0to2000ypb_umwE_3by_v0.3.dump \
-          output file=../output/12taxa_387cells_66knots_0to2000ypb_umwE_3by_od_mpp_full_nug_mu0.csv\
+          output file=../output/12taxa_387cells_66knots_0to2000ypb_umwE_3by_od_mpp_full_nug_mu0_res.csv\
           random seed=42'),
          ('pred_od_mpp_full_nug_mu0_umwW',
           './pred_od_mpp_full_nug_mu0.exe \
           sample num_warmup=75 num_samples=1000 save_warmup=1\
           data file=../r/dump/pred_data_12taxa_459cells_78knots_0to2000ypb_umwW_3by_v0.3.dump \
-          output file=../output/12taxa_459cells_78knots_0to2000ypb_umwW_3by_od_mpp_full_nug_mu0.csv\
+          output file=../output/12taxa_459cells_78knots_0to2000ypb_umwW_3by_od_mpp_full_nug_mu0_res.csv\
           random seed=42'),
          ('pred_od_mpp_full_nug_mu0_umw',
           './pred_od_mpp_full_nug_mu0.exe \
           sample num_warmup=75 num_samples=1000 save_warmup=1 \
           data file=../r/dump/pred_data_12taxa_699cells_120knots_0to2000ypb_umw_3by_v0.3.dump \
-          output file=../output/12taxa_699cells_120knots_0to2000ypb_umw_3by_od_mpp_full_nug_mu0.csv\
+          output file=../output/12taxa_699cells_120knots_0to2000ypb_umw_3by_od_mpp_full_nug_mu0_res.csv\
           random seed=42')
 ]
 

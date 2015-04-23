@@ -46,6 +46,7 @@ private:
     int T;
     int N_knots;
     int N_cores;
+    int res;
     vector<vector<int> > y;
     vector_d rho;
     vector_d eta;
@@ -124,6 +125,11 @@ public:
         vals_i__ = context__.vals_i("N_cores");
         pos__ = 0;
         N_cores = vals_i__[pos__++];
+        context__.validate_dims("data initialization", "res", "int", context__.to_vec());
+        res = int(0);
+        vals_i__ = context__.vals_i("res");
+        pos__ = 0;
+        res = vals_i__[pos__++];
         context__.validate_dims("data initialization", "y", "int", context__.to_vec((N_cores * T),K));
         stan::math::validate_non_negative_index("y", "(N_cores * T)", (N_cores * T));
         stan::math::validate_non_negative_index("y", "K", K);
@@ -291,6 +297,11 @@ public:
             throw std::domain_error(std::string("Invalid value of N_cores: ") + std::string(e.what()));
         };
         try {
+            check_greater_or_equal(function__,res,0,"res");
+        } catch (std::domain_error& e) {
+            throw std::domain_error(std::string("Invalid value of res: ") + std::string(e.what()));
+        };
+        try {
             check_greater_or_equal(function__,rho,0,"rho");
         } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of rho: ") + std::string(e.what()));
@@ -419,6 +430,7 @@ public:
 	c_s[k]      = exp(- 1.0/rho[k] * d_inter.array()).matrix();
 	H_s[k]      = c_s[k] * C_s_inv[k];
 	M_H_s[k] = H_s[k] - Q * ( QT * H_s[k]); 
+	//w = res * res * w;
       }
 
         // validate transformed data
@@ -898,7 +910,7 @@ public:
       	  r_new.row(i * T + t) = gamma * r.row(idx_core);
       	  for (int j = 0; j < N; ++j) {
       	    if (d(idx_cores[i]-1,j) > 0) {
-      	      out_sum.row(i * T + t) += w(i,j) * r.row(j * T + t);
+      	      out_sum.row(i * T + t) += res * res * w(i,j) * r.row(j * T + t);
       	    }
       	  }
       	  //sum_w[i*T+t] = out_sum.row(i * T + t).sum();
@@ -1171,8 +1183,8 @@ public:
 		  const double sumgp1 = 1 + sum_exp_g[C];
 		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 
-		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * invsumw2;
-		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * invsumw2;
+		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * res * res * invsumw2;
+		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * res * res * invsumw2;
 
 		  for (int mp=0; mp<K; ++mp) {
 
