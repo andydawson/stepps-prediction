@@ -17,11 +17,18 @@ is.projected(us.shp)
 # gridname = 'mn_3by'
 
 rescale    = 1e6
-nside      = 1
+nside      = 5
 cell_width = 8000/rescale
+
+grid = 'umw'
 
 states_pls = c('wisconsin', 'michigan:north', 'minnesota')
 states_pol = c('wisconsin', 'michigan:north', 'minnesota')
+
+# grid = 'MISP'
+# 
+# states_pls = c('michigan:south')
+# states_pol = c('michigan:south')
 
 pls = data.frame(read.table(file='data/western_comp_stepps_v0.3-1.csv', sep=",", row.names=NULL, header=TRUE))
 
@@ -115,13 +122,13 @@ coarse_states[coarse_states %in% MN] = 'Minnesota'
 domain_coarse       = as.data.frame(domain_coarse)/rescale
 domain_coarse$state = coarse_states
 
-pdf('figures/coarse_domain_test.pdf')
+pdf(paste0('figures/coarse_domain_', grid, '.pdf'))
 par(mfrow=c(1,1))
 plot(domain_coarse[,1]*rescale, domain_coarse[,2]*rescale)
 plot(us.shp, add=T, lwd=2)
 dev.off()
 
-gridname = paste0('umw_', nside)
+gridname = paste0(grid, '_', nside)
 # write.table(domain_coarse,file=paste('data/', gridname, '_coarse.csv', sep=''),sep=",",row.names=F)
 domain = domain_coarse
 save(domain, N, d, d_hood, centers_pls, file=paste('data/grid/', gridname, 'by.rdata',sep=''))

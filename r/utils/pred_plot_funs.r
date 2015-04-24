@@ -211,7 +211,7 @@ get_limits <- function(centers){
 
   return(list(xlims=c(xlo,xhi),ylims=c(ylo, yhi)))
 }  
-  
+
 plot_pred_maps <- function(r_mean, centers, taxa, t, N, K, T, thresh, limits, type, suff, save_plots, fpath=subDir){
   
   rescale=1000000
@@ -512,7 +512,7 @@ theme_clean <- function(plot_obj){
 }
 
 
-plot_core_locations <- function(y, centers_polU, centers_pls, ages, limits){
+plot_core_locations <- function(y, centers_polU, centers_pls, ages, limits, fpath){
   
   centers = centers_polU*1000
   
@@ -569,13 +569,13 @@ plot_core_locations <- function(y, centers_polU, centers_pls, ages, limits){
 }
 
 
-plot_core_locations_select <- function(y, centers_polU, centers_pls, ages, limits, fpath){
+plot_core_locations_select <- function(y, centers_pol, centers_pls, ages, idx.keep, limits, fpath){
  
   rescale = 1000000
-  centers = centers_polU*rescale
+  centers = centers_pol*rescale
 
   K = ncol(y)
-  N_cores = nrow(centers_polU)
+  N_cores = nrow(centers_pol)
   
   buffer = 0#100000
 
@@ -589,7 +589,7 @@ plot_core_locations_select <- function(y, centers_polU, centers_pls, ages, limit
   ylo = min(centers_pls[,2])*rescale - buffer
   yhi = max(centers_pls[,2])*rescale + buffer
   
-  idx.keep  = c(1,2,length(ages)/2,T)
+#   idx.keep  = c(1,2,length(ages)/2,T)
   ages.keep = ages[idx.keep]
   T.keep    = length(ages.keep)
   
@@ -612,9 +612,9 @@ plot_core_locations_select <- function(y, centers_polU, centers_pls, ages, limit
     
     print(idx_data)
     
-    core_dat = rbind(core_dat, data.frame(x     = centers_polU[idx_data,1]*rescale, 
-                                          y     = centers_polU[idx_data,2]*rescale, 
-                                          age   = rep(ages[i], length(idx_data))
+    core_dat = rbind(core_dat, data.frame(x     = centers_pol[idx_data,1]*rescale, 
+                                          y     = centers_pol[idx_data,2]*rescale, 
+                                          age   = rep(ages.keep[i], length(idx_data))
                                           ))
   }
   
@@ -623,10 +623,11 @@ plot_core_locations_select <- function(y, centers_polU, centers_pls, ages, limit
     coord_fixed() #+ scale_x_continuous(limits$xlims) + scale_y_continuous(limits$ylims)
   p <- add_map_albers(p, map_data=us.fort, limits)#, xlims=c(xlo,xhi), ylims=c(ylo, yhi))
   p <- p + facet_grid(age~.)
-  p <- p + theme(strip.text.x = element_blank(),
-                strip.text.y = element_blank())
-  p <- p + theme(strip.background = element_blank())
-  p <- theme_clean(p) #+ theme(strip.text.y = element_text(size = rel(1.5)), strip.text.x = element_text(size = rel(1.5)))
+#   p <- p + theme(strip.text.x = element_blank(),
+#                 strip.text.y = element_blank())
+#   p <- p + theme(strip.background = element_blank())
+  p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.5)), 
+                          strip.text.x = element_text(size = rel(1.5)))
   
   Sys.sleep(2)
   print(p)

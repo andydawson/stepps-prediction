@@ -457,7 +457,7 @@ build_props_mut <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, 
   return(list(r=r, g=g, sumHalpha=sumHalpha, Halpha=Halpha))
 }
 
-build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0){
+build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
   
   N = nrow(d_inter)
   N_knots = ncol(d_inter)
@@ -854,7 +854,7 @@ build_sum_w_pot <- function(psi, rescale){
   
   sum_w_pot = 0
   for (v in 1:N_pot){
-    C = C +  d_pot[v,2] *  exp(-(d_pot[v,1]/psi)^2)
+    sum_w_pot = sum_w_pot +  d_pot[v,2] *  exp(-(d_pot[v,1]/psi)^2)
   }
   return(sum_w_pot)
 }
@@ -1406,6 +1406,53 @@ knots_in_domain4 <-function(knots, cells, cell_width){
   
   knots_int
 }
+
+cores_near_domain <-function(knots, cells, cell_width){
+    
+  knots_int = matrix(nrow=0, ncol=2)
+   
+   for (i in 1:nrow(knots)){
+#      x = knots[i,1]
+#      y = knots[i,2]
+     
+     d = rdist(as.matrix(cells), as.matrix(t(knots[i,])))
+    
+#     xright = x + cell_width
+#     xleft  = x - cell_width
+#     yup    = y + cell_width
+#     ydown  = y - cell_width
+#     
+#     right = matrix(cbind(xright, y), nrow=1)
+#     left = matrix(cbind(xleft, y), nrow=1)
+#     up = matrix(cbind(x, yup), nrow=1)
+#     down = matrix(cbind(x, ydown), nrow=1)
+#     
+#     d = rdist(as.matrix(cells), right)
+#     nright = length(which(d < cell_width))
+#     
+#     d = rdist(as.matrix(cells), left)
+#     nleft = length(which(d < cell_width))
+#     
+#     d = rdist(as.matrix(cells), up)
+#     nup = length(which(d < cell_width))
+#     
+#     d = rdist(as.matrix(cells), down)
+#     ndown = length(which(d < cell_width))
+#     
+#     if ((nup > 0) | (ndown > 0) | (nright > 0) | (nleft > 0)) {
+#       knots_int = rbind(knots_int, knots[i,])
+#     }
+    
+    if (any(d < cell_width)) {
+      knots_int = rbind(knots_int, knots[i,])
+    }
+
+
+   }
+  
+  knots_int
+}
+
 
 # # left = rownames(tree_type)[!(rownames(tree_type) %in% taxa_sub)]
 # left = rownames(tree_type)[!(rownames(tree_type) %in% toupper(taxa_sub))]

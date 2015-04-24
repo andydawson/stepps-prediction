@@ -12,8 +12,17 @@ source('r/utils/pred_helper_funs.r')
 # suff_fit = '12taxa_459cells_77knots_0to2000ypb_umwW_3by_od_mpp_full'
 # suff_dat = '12taxa_459cells_77knots_0to2000ypb_umwW_3by_v0.3'
 # suff_fit = '12taxa_459cells_77knots_0to2000ypb_umwW_3by_mpp_full_nug_mu0'
-suff_dat = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3'
-suff_fit = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_mpp_full_nug_mu0'
+# suff_dat = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3'
+# suff_fit = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_mpp_full_nug_mu0'
+
+# new output scaled res
+# suff_dat = 'pred_data_12taxa_387cells_66knots_0to2000ypb_umwE_3by_v0.3'
+# suff_fit = '12taxa_387cells_66knots_0to2000ypb_umwE_3by_od_mpp_full_nug_mu0_res'
+# 
+# suff_fit = '12taxa_459cells_78knots_0to2000ypb_umwW_3by_od_mpp_full_nug_mu0_res'
+
+suff_dat = '12taxa_699cells_120knots_0to2000ypb_umw_3by_v0.3'
+suff_fit = '12taxa_699cells_120knots_0to2000ypb_umw_3by_od_mpp_full_nug_mu0_res'
 
 # where to put the figures
 subDir <- paste("figures/", suff_fit, sep='')
@@ -38,7 +47,8 @@ create_figure_path(subDir)
 load(paste('r/dump/pred_data_', suff_dat, '.rdata', sep=''))
 
 if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
-  fname = sprintf('output/%s.csv', suff_fit)
+  fname = sprintf('tmp/%s.csv', suff_fit)
+#   fname = sprintf('output/%s.csv', suff_fit)
   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
   fit = read_stan_csv(fname)
   post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
@@ -95,7 +105,7 @@ r_pred = process_out$r
 g      = process_out$g
 Halpha_t = process_out$Halpha_t
 Halpha_s = process_out$Halpha_s
-rm(process_out)
+# rm(process_out)
 
 niter = dim(post[,1,])[1]
 mean_Halpha_t = array(NA, dim=c(W, T-1, niter))

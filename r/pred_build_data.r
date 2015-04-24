@@ -32,9 +32,11 @@ us.shp <- readOGR('data/map_data/us_alb.shp', 'us_alb')
 mydate = '2014-07-22'
 
 # grid 
-res  = 3
+res  = res
+side = side
 side = ''
-gridname = paste0('umw', side, '_', as.character(res), 'by')
+grid = 'MISP' # or 'umw'
+gridname = paste0(grid, side, '_', as.character(res), 'by')
 #gridname = 'umwE_3by'
 
 # reconstruction limits and bin-width
@@ -57,17 +59,11 @@ suff    = paste(gridname, '_', version, sep='')
 # suff = '3by_v0.3_test'
 
 
-# states_pol = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
-# states_pls = c('minnesota', 'wisconsin', 'michigan_north', 'michigan_south')
+states_pol = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
+states_pls = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
 
-states_pol = c('minnesota', 'wisconsin', 'michigan:north')
-states_pls = c('minnesota', 'wisconsin', 'michigan:north')
-
-# states_pol = c('wisconsin', 'michigan:north')
-# states_pls = c('wi', 'mi')
-
-# states_pol = c('minnesota')
-# states_pls = c('minnesota')
+# states_pol = c('minnesota', 'wisconsin', 'michigan:north')
+# states_pls = c('minnesota', 'wisconsin', 'michigan:north')
 
 cells = NA
 # cells = seq(1,100)
@@ -97,7 +93,7 @@ pls.raw = data.frame(read.table(file='data/western_comp_stepps_v0.3-1.csv', sep=
 # read in grid
 load(file=paste('data/grid/', gridname, '.rdata', sep=''))
 
-pollen_ts = read.table(paste('data/pollen_ts_', mydate, '.csv', sep=''), header=TRUE)
+pollen_ts = read.table(paste('data/pollen_ts_', mydate, '.csv', sep=''), header=TRUE, stringsAsFactors=FALSE)
 
 # read in calibration output
 # load('calibration/r/dump/cal_data_12taxa_mid_comp_all.rdata')
@@ -108,8 +104,6 @@ fit = read_stan_csv('data/12taxa_mid_comp_long.csv')
 suff_data = '12taxa_6341cells_120knots_v0.3'
 load(paste('data/veg_data_', suff_data, '.rdata', sep=''))
 load(file="data/12taxa_6341cells_53knots_cont_od_mpp.rdata")
-
-load('data/gamma_coarse_5by.rdata')
 
 ##########################################################################################################################
 ## read in and organize pls data
@@ -186,24 +180,42 @@ yhi = max(centers_veg$y)
 ##########################################################################################################################
 
 ## pollen data!
-pollen_ts = pollen_ts[which((pollen_ts$ages <= 2500) & (pollen_ts$state %in% states_pol)),]
+pollen_ts1 = pollen_ts[which((pollen_ts$ages <= 2500) & (pollen_ts$state %in% states_pol)),]
 
 # reproject pollen coords from lat long to Albers
-pollen_ts <- pollen_to_albers(pollen_ts)
+pollen_ts2 <- pollen_to_albers(pollen_ts1)
 
 # pollen_ts = pollen_ts[which((pollen_ts[,'x'] <= xhi) & (pollen_ts[,'x'] >= xlo) & 
 #                             (pollen_ts[,'y'] <= yhi) & (pollen_ts[,'y'] >= ylo)),]
 
-pollen_locs = cbind(pollen_ts$x, pollen_ts$y)
-pollen_int  = knots_in_domain4(unique(pollen_locs), centers_veg, cell_width = res*8000/rescale)
+pollen_locs = cbind(pollen_ts2$x, pollen_ts2$y)
+# pollen_int  = knots_in_domain4(unique(pollen_locs), centers_veg, cell_width = res*8000/rescale)
+# 
+# idx_pollen_int = apply(pollen_locs, 1, function(x) if (any(rdist(x, pollen_int) < 1e-8)) {return(TRUE)} else {return(FALSE)})
+# pollen_ts = pollen_ts[idx_pollen_int, ]
 
-idx_pollen_int = apply(pollen_locs, 1, function(x) if (any(rdist(x, pollen_int) < 1e-8)) {return(TRUE)} else {return(FALSE)})
-pollen_ts = pollen_ts[idx_pollen_int, ]
+pollen_int  = cores_near_domain(pollen_locs, centers_veg, cell_width = res*8000/rescale)
+
+idx_pollen_int = apply(pollen_locs, 1, 
+                       function(x) if (any(rdist(x, pollen_int) < 1e-8)) {return(TRUE)} else {return(FALSE)})
+pollen_ts3 = pollen_ts2[idx_pollen_int, ]
+
+# check how does splitting affects weights... 
+pollen_check = pollen_ts2[,1:7]
+pollen_check$int = rep(FALSE, nrow(pollen_check))
+pollen_check$int[which(idx_pollen_int == TRUE)] = TRUE
+pollen_check=pollen_check[!duplicated(pollen_check),]
 
 # plot domain and core locations 
 par(mfrow=c(1,1))
 plot(centers_veg$x*rescale, centers_veg$y*rescale)
-points(pollen_ts$x*rescale, pollen_ts$y*rescale, col='blue', pch=19)
+points(pollen_ts3$x*rescale, pollen_ts3$y*rescale, col='blue', pch=19)
+plot(us.shp, add=T, lwd=2)
+
+# plot domain and core locations 
+par(mfrow=c(1,1))
+plot(pollen_ts3$x*rescale, pollen_ts3$y*rescale, col='blue', pch=19)
+points(centers_veg$x*rescale, centers_veg$y*rescale)
 plot(us.shp, add=T, lwd=2)
 
 ##########################################################################################################################
@@ -211,7 +223,7 @@ plot(us.shp, add=T, lwd=2)
 ##########################################################################################################################
 
 # sum counts over int length intervals
-pollen_agg = build_pollen_counts(tmin=tmin, tmax=tmax, int=int, pollen_ts=pollen_ts, taxa_all, taxa_sub)
+pollen_agg = build_pollen_counts(tmin=tmin, tmax=tmax, int=int, pollen_ts=pollen_ts3, taxa_all, taxa_sub)
 #pollen_agg = build_pollen_counts_fast_core(tmin=tmin, tmax=tmax, int=int, pollen_ts=pollen_ts)
 
 meta_pol   = pollen_agg[[2]]
@@ -250,6 +262,9 @@ plot(centers_veg$x*rescale, centers_veg$y*rescale, col='lightgrey')
 points(centers_veg[idx_cores,'x']*rescale, centers_veg[idx_cores,'y']*rescale, col='red', pch=19)
 points(centers_pol$x*rescale, centers_pol$y*rescale, col='blue', pch=4, cex=1.4)
 plot(us.shp, add=TRUE)
+
+# check domain splitting
+idx_cores_all <- build_idx_cores(cbind(pollen_check$x, pollen_check$y), centers_veg, N_cores=nrow(pollen_check))
 
 ##########################################################################################################################
 ## chunk 3: build distance matrices
@@ -326,106 +341,112 @@ sum_w_pot <- build_sum_w_pot(psi, rescale)
 
 gamma = recompute_gamma(w, sum_w_pot, psi, gamma, d_hood)
 
-##########################################################################################################################
-## chunk: qr decompose X
-##########################################################################################################################
+# domain splitting check
+w_all <- build_weight_matrix(d, idx_cores_all, N, length(idx_cores_all), psi)
+pollen_check$sum_w = rowSums(w_all)
 
-x = matrix(1, nrow=(N*T), ncol=1)
-N_p = N*T
-
-temp = qr(x)
-Q = qr.Q(temp)
-R = qr.R(temp)
-
-P = Q %*% t(Q)
-# M = diag(N_p) - P
-
-if (all(P-P[1,1]<1.0e-12)){
-  P = P[1,1]
-  N_p = 1
-}
+# ##########################################################################################################################
+# ## chunk: qr decompose X
+# ##########################################################################################################################
+# 
+# x = matrix(1, nrow=(N*T), ncol=1)
+# N_p = N*T
+# 
+# temp = qr(x)
+# Q = qr.Q(temp)
+# R = qr.R(temp)
+# 
+# P = Q %*% t(Q)
+# # M = diag(N_p) - P
+# 
+# if (all(P-P[1,1]<1.0e-12)){
+#   P = P[1,1]
+#   N_p = 1
+# }
 
 ##########################################################################################################################
 ## save the data; rdata more efficient, use for processing
 ##########################################################################################################################
 
-dump(c('K', 'N', 'T', 'N_cores', 'N_knots',
+dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
        'gamma', 'psi', 'phi', 'rho', 'eta',
        'y', 
        'idx_cores', 
        'd', 'd_knots', 'd_inter', 'w',
        'lag',
-       'P', 'N_p', 'sum_w_pot'),
+#        'P', 'N_p', 'sum_w_pot'),
+        'sum_w_pot', 'pollen_check'),
 #        'knot_coords',
 #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
      file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
 
-save(K, N, T, N_cores, N_knots,
+save(K, N, T, N_cores, N_knots, res,
        gamma, psi, phi, rho, eta,
        y, 
        idx_cores, 
        d, d_knots, d_inter, w,
        lag,
-       P, N_p, sum_w_pot,
+#        P, N_p, sum_w_pot,
+       sum_w_pot, pollen_check,
        knot_coords,
        centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
        file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
 
-##########################################################################################################################
-## build initial conditions
-##########################################################################################################################
-
-tau   = 150
-mu    = rep(0,W) 
-omega = 0.5
-ksi   = 0.1
-
-mu_t = array(0, dim=c(W, T))
-for (k in 1:W){
-  mu_t[k,1] = rnorm(1, mean= mu[k], sd= sqrt((ksi * ksi)/(1 - omega * omega)))
-  for (i in 2:T){
-    mu_t[k,i] = rnorm(1, mean = mu[k] + omega * mu_t[k, i-1], sd = ksi)     
-  }
-}
-
-# alpha = build_alpha_init(W, N_knots, T, rep(rho,W), tau, rep(eta,W), d_knots, lag)
-inits = pred_build_inits(K, N, N_knots, eta, rho, mu, tau, d_knots, d_inter, lag)
-alpha = inits$alpha_init
-g     = inits$g_init
-
-# eta   = 1#rep(1, W) 
-
-dump(c('tau', 'mu', 'omega', 'ksi', 'mu_t', 'alpha', 'g'), 
-     file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 
-                'ypb_', suff, '_inits.dump',sep=""))
-
-##########################################################################################################################
-## build initial conditions for full
-##########################################################################################################################
-
-#tau   = 150
-mu    = rep(0,W)
-ksi   = 0.1
-
-sigma  = rep(0.6, W)
-lambda = rep(0.2, W)
-
-mu_t = array(0, dim=c(W, T))
-for (k in 1:W){
-  mu_t[k,1] = rnorm(1, mean= 0, sd= 20)
-  print(rnorm(1, mean= 0, sd= 20))
-  for (i in 2:T){
-    mu_t[k,i] = rnorm(1, mean = mu_t[k, i-1], sd = ksi)     
-  }
-}
-
-inits = pred_build_inits_full(K, N, N_knots, eta, rho, mu, mu_t, tau, d_knots, d_inter, lag)
-alpha_s = inits$alpha_s_init
-alpha_t = inits$alpha_t_init
-g       = inits$g_init
-
-# eta   = 1#rep(1, W) 
-
-dump(c('tau', 'ksi', 'sigma', 'lambda', 'mu', 'mu_t', 'alpha_s', 'alpha_t', 'g'), 
-     file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 
-                'ypb_', suff, '_inits_full.dump',sep=""))
+# ##########################################################################################################################
+# ## build initial conditions
+# ##########################################################################################################################
+# 
+# tau   = 150
+# mu    = rep(0,W) 
+# omega = 0.5
+# ksi   = 0.1
+# 
+# mu_t = array(0, dim=c(W, T))
+# for (k in 1:W){
+#   mu_t[k,1] = rnorm(1, mean= mu[k], sd= sqrt((ksi * ksi)/(1 - omega * omega)))
+#   for (i in 2:T){
+#     mu_t[k,i] = rnorm(1, mean = mu[k] + omega * mu_t[k, i-1], sd = ksi)     
+#   }
+# }
+# 
+# # alpha = build_alpha_init(W, N_knots, T, rep(rho,W), tau, rep(eta,W), d_knots, lag)
+# inits = pred_build_inits(K, N, N_knots, eta, rho, mu, tau, d_knots, d_inter, lag)
+# alpha = inits$alpha_init
+# g     = inits$g_init
+# 
+# # eta   = 1#rep(1, W) 
+# 
+# dump(c('tau', 'mu', 'omega', 'ksi', 'mu_t', 'alpha', 'g'), 
+#      file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 
+#                 'ypb_', suff, '_inits.dump',sep=""))
+# 
+# ##########################################################################################################################
+# ## build initial conditions for full
+# ##########################################################################################################################
+# 
+# #tau   = 150
+# mu    = rep(0,W)
+# ksi   = 0.1
+# 
+# sigma  = rep(0.6, W)
+# lambda = rep(0.2, W)
+# 
+# mu_t = array(0, dim=c(W, T))
+# for (k in 1:W){
+#   mu_t[k,1] = rnorm(1, mean= 0, sd= 20)
+#   print(rnorm(1, mean= 0, sd= 20))
+#   for (i in 2:T){
+#     mu_t[k,i] = rnorm(1, mean = mu_t[k, i-1], sd = ksi)     
+#   }
+# }
+# 
+# inits = pred_build_inits_full(K, N, N_knots, eta, rho, mu, mu_t, tau, d_knots, d_inter, lag)
+# alpha_s = inits$alpha_s_init
+# alpha_t = inits$alpha_t_init
+# g       = inits$g_init
+# 
+# # eta   = 1#rep(1, W) 
+# 
+# dump(c('tau', 'ksi', 'sigma', 'lambda', 'mu', 'mu_t', 'alpha_s', 'alpha_t', 'g'), 
+#      file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 
+#                 'ypb_', suff, '_inits_full.dump',sep=""))
