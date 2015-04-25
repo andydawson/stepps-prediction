@@ -1,3 +1,2 @@
 *.rdata filter=fat -crlf
-*.csv filter=fat -crlf
 
