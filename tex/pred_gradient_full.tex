@@ -150,7 +150,7 @@ The log posterior is given by
 \begin{align*}
   lp &= \underbrace{\sum_{i=1}^{\text{Ncores}} \sum_{t=1}^{T} \log(\text{dirmult}(y_{i,t,\cdot}| \phi \odot r^{new}_{i,t, \cdot}))}_{\text{lp1}} +
   \underbrace{\sum_{k=1}^{K-1}\log(\text{mvnorm}(\alpha_k| \eta^2 C_s \kron C_t))}_{\text{lp2}} \\& +
-  \underbrace{\sum_{k=1}^{K-1}\sum_{t=1}^{T}\sum_{c=1}^{N}\log(\text{normal}(g_{c,t,k}| \mu_k + (McC^{*-1}\alpha_{k})_{c,t}, \eta^2 + c_{c,t}C^{*-1}c_{c,t}'))}_{\text{lp3}}
+  \underbrace{\sum_{k=1}^{K-1}\sum_{t=1}^{T}\sum_{c=1}^{N}\log(\text{normal}(g_{s,t,k}| \mu_k + \mu_{t,k}^t + (M \, c_k \, C_k^{-1} \alpha^s_k)_s + (q_k \, Q^{-1} \alpha^t_{t,k})_{s} , \sigma^g_{s,t,k} ))}_{\text{lp3}}
 %  lp &= lp + (b_\eta - a_\eta)\text{logit}^{-1}(\eta)\left( 1-
 %  \text{logit}^{-1}(\eta) \right) \\
 %  lp &= lp + (b_\rho - a_\rho)\text{logit}^{-1}(\rho)\left( 1-
@@ -260,8 +260,8 @@ Let $A = g_{s,t,k} - \mu_{s,t,k}^g$ and $B=(\sigma_{s,t,k}^g)^2$. Then we have t
 \subsubsection{Gradient of $\alpha_{t,k}^t$}
 
 \begin{align*}
-\frac{\partial lp (\alpha_{t,k}^t (\lambda_k))}{\partial \lambda_k} &= \sum_{t} - 0.5 \lambda^{-2} \text{trace} \left( Q^{*-1} \left( Q^* \otimes d_{\text{knots}} \right) \right) + 0.5 \lambda^{-2} (\alpha_{t,k}^t - \alpha_{t-1,k}^t) Q^{*-1} (Q^* \otimes d_{\text{knots}})  Q^{*-1} (\alpha_{t,k}^t - \alpha_{t-1,k}^t)', \quad \text{ for  } t>1; \\ 
-\frac{\partial lp (\alpha_{1,k}^t (\lambda_k))}{\partial \lambda_k} &= \sum_{t} - 0.5 \lambda^{-2} \text{trace} \left( Q^{*-1} \left(Q^* \otimes d_{\text{knots}} \right) \right) + 0.5 \lambda^{-2} \alpha_{1,k}^t Q^{*-1} (Q^* \otimes d_{\text{knots}})  Q^{*-1} (\alpha_{1,k}^t)' , \quad \text{ for  } t=1;
+\frac{\partial lp (\alpha_{t,k}^t (\lambda_k))}{\partial \lambda_k} &= \sum_{t} - 0.5 \lambda^{-2} \text{trace} \left( Q^{*-1} \left( Q^* \odot d_{\text{knots}} \right) \right) + 0.5 \lambda^{-2} (\alpha_{t,k}^t - \alpha_{t-1,k}^t) Q^{*-1} (Q^* \odot d_{\text{knots}})  Q^{*-1} (\alpha_{t,k}^t - \alpha_{t-1,k}^t)', \quad \text{ for  } t>1; \\ 
+\frac{\partial lp (\alpha_{1,k}^t (\lambda_k))}{\partial \lambda_k} &= \sum_{t} - 0.5 \lambda^{-2} \text{trace} \left( Q^{*-1} \left(Q^* \odot d_{\text{knots}} \right) \right) + 0.5 \lambda^{-2} \alpha_{1,k}^t Q^{*-1} (Q^* \odot d_{\text{knots}})  Q^{*-1} (\alpha_{1,k}^t)' , \quad \text{ for  } t=1;
 \end{align*}
 
 Finally, we adjust to constrain parameter space. We have that
