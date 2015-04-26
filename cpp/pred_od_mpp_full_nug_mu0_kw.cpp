@@ -878,7 +878,8 @@ public:
 	    var_g[k][i] = 0.0;
 	  } 
 	  var_g[k][i] += 1;
-          lp_thrd[k] += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+	  //XXX:uncomment after testing
+          //lp_thrd[k] += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 
       	exp_g.col(k) = exp(g[k]);
@@ -1108,9 +1109,9 @@ public:
 	    double B      = var_g[k][n*T+t+1];
 	    double AoverB = A/B;
 
-	    // uncomment these lines for lambda grad
-	    gradient[1 + W + k] -= AoverB * dAdlam[n];
-	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
+	    // // uncomment these lines for lambda grad
+	    // gradient[1 + W + k] -= AoverB * dAdlam[n];
+	    // gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
 	   
       	  } // t
       	} // n
