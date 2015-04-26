@@ -52,13 +52,13 @@ private:
     vector_d eta;
     double gamma;
     //double psi;
-    double sum_w_pot;
+    vector_d sum_w_pot;
     vector_d phi;
     vector<int> idx_cores;
     matrix_d d;
     matrix_d d_knots;
     matrix_d d_inter;
-    matrix_d w;
+    vector<matrix_d> w;
     matrix_d lag;
     // int N_p;
     // double P;
@@ -171,11 +171,15 @@ public:
         // vals_r__ = context__.vals_r("psi");
         // pos__ = 0;
         // psi = vals_r__[pos__++];
-        context__.validate_dims("data initialization", "sum_w_pot", "double", context__.to_vec());
-        sum_w_pot = double(0);
+        stan::math::validate_non_negative_index("sum_w_pot", "K", K);
+        sum_w_pot = vector_d(K);
+        context__.validate_dims("data initialization", "sum_w_pot", "vector_d", context__.to_vec(K));
         vals_r__ = context__.vals_r("sum_w_pot");
         pos__ = 0;
-        sum_w_pot = vals_r__[pos__++];
+        size_t sum_w_pot_i_vec_lim__ = K;
+        for (size_t i_vec__ = 0; i_vec__ < sum_w_pot_i_vec_lim__; ++i_vec__) {
+            sum_w_pot[i_vec__] = vals_r__[pos__++];
+        }
         stan::math::validate_non_negative_index("phi", "K", K);
         phi = vector_d(K);
         context__.validate_dims("data initialization", "phi", "vector_d", context__.to_vec(K));
@@ -233,19 +237,24 @@ public:
                 d_inter(m_mat__,n_mat__) = vals_r__[pos__++];
             }
         }
-        context__.validate_dims("data initialization", "w", "matrix_d", context__.to_vec(N_cores,N));
+        context__.validate_dims("data initialization", "w", "matrix_d", context__.to_vec(K,N_cores,N));
+        stan::math::validate_non_negative_index("w", "K", K);
         stan::math::validate_non_negative_index("w", "N_cores", N_cores);
         stan::math::validate_non_negative_index("w", "N", N);
-        w = matrix_d(N_cores,N);
+
+        w = vector<matrix_d>(K,matrix_d(N_cores,N));
         vals_r__ = context__.vals_r("w");
         pos__ = 0;
         size_t w_m_mat_lim__ = N_cores;
         size_t w_n_mat_lim__ = N;
-        for (size_t n_mat__ = 0; n_mat__ < w_n_mat_lim__; ++n_mat__) {
+	for (size_t k = 0; k < K; ++k) {
+	  for (size_t n_mat__ = 0; n_mat__ < w_n_mat_lim__; ++n_mat__) {
             for (size_t m_mat__ = 0; m_mat__ < w_m_mat_lim__; ++m_mat__) {
-                w(m_mat__,n_mat__) = vals_r__[pos__++];
+	      w[k](m_mat__,n_mat__) = vals_r__[pos__++];
             }
-        }
+	  }
+	}
+
         context__.validate_dims("data initialization", "lag", "matrix_d", context__.to_vec(T,T));
         stan::math::validate_non_negative_index("lag", "T", T);
         stan::math::validate_non_negative_index("lag", "T", T);
@@ -317,11 +326,6 @@ public:
         } catch (std::domain_error& e) {
             throw std::domain_error(std::string("Invalid value of gamma: ") + std::string(e.what()));
         };
-        // try {
-        //     check_greater_or_equal(function__,psi,0,"psi");
-        // } catch (std::domain_error& e) {
-        //     throw std::domain_error(std::string("Invalid value of psi: ") + std::string(e.what()));
-        // };
         try {
             check_greater_or_equal(function__,sum_w_pot,0,"sum_w_pot");
         } catch (std::domain_error& e) {
@@ -897,25 +901,31 @@ public:
 
       matrix_d r_new(N_cores * T, K);
       matrix_d out_sum(N_cores*T,K);
-      vector_d sum_w(N*T);
+      vector<vector_d> sum_w(W);
+
+      for (int k = 0; k < W; ++k) {
+	sum_w[k] = vector_d(N*T);
+      }
 
       out_sum.fill(0);
 
       timer_rnew.tic(0);
 
       #pragma omp parallel for
-      for (int i = 0; i < N_cores; ++i) {
-	for (int t = 0; t < T; ++t) {
-	  int idx_core = (idx_cores[i] - 1) * T + t;
-	  r_new.row(i * T + t) = gamma * r.row(idx_core);
-	  for (int j = 0; j < N; ++j) {
-	    if (d(idx_cores[i]-1,j) > 0) {
-	      out_sum.row(i * T + t) += res * res * w(i,j) * r.row(j * T + t);
+      for (int k = 0; k < W; ++k) {
+	for (int i = 0; i < N_cores; ++i) {
+	  for (int t = 0; t < T; ++t) {
+	    int idx_core = (idx_cores[i] - 1) * T + t;
+	    r_new.row(i * T + t) = gamma * r.row(idx_core);
+	    for (int j = 0; j < N; ++j) {
+	      if (d(idx_cores[i]-1,j) > 0) {
+		out_sum(i * T + t, k) += res * res * w[k](i,j) * r(j * T + t, k);
+	      }
 	    }
+	    //sum_w[i*T+t] = out_sum.row(i * T + t).sum();
+	    sum_w[k][i*T+t] = sum_w_pot[k];
+	    r_new(i * T + t, k) += out_sum(i *T + t, k) * (1 - gamma) / sum_w[k][i*T+t];
 	  }
-	  //sum_w[i*T+t] = out_sum.row(i * T + t).sum();
-	  sum_w[i*T+t] = sum_w_pot;
-	  r_new.row(i * T + t) += out_sum.row(i *T + t) * (1 - gamma) / sum_w[i*T+t];
 	}
       }
 
@@ -1166,7 +1176,7 @@ public:
 	    if (y_row_sum[si] > 0.0) {
 
 	      double dirmultp1 = -digamma(A[si] + N_grains[si]) + digamma(A[si]);
-	      double invsumw2 = 1 / (sum_w[si] * sum_w[si]);
+	      double invsumw2 = 1 / (sum_w[k][si] * sum_w[k][si]);
 
 	      for (int m=0; m<K; ++m) {
 
@@ -1183,8 +1193,8 @@ public:
 		  const double sumgp1 = 1 + sum_exp_g[C];
 		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 
-		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w(i,c) * sum_w[si] - w(i,c) * out_sum_si_m) * res * res * invsumw2;
-		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w(i,c) * out_sum_si_m) * res * res * invsumw2;
+		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w[k](i,c) * sum_w[k][si] - w[k](i,c) * out_sum_si_m) * res * res * invsumw2;
+		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w[k](i,c) * out_sum_si_m) * res * res * invsumw2;
 
 		  for (int mp=0; mp<K; ++mp) {
 
@@ -1259,304 +1269,6 @@ public:
       throw "log_prob called";
 
     }
-
-
-    // template <bool propto__, bool jacobian__, typename T__>
-    // T__ log_prob(vector<T__>& params_r__,
-    //              vector<int>& params_i__,
-    //              std::ostream* pstream__ = 0) const {
-
-    //     T__ DUMMY_VAR__(std::numeric_limits<double>::quiet_NaN());
-    //     (void) DUMMY_VAR__;  // suppress unused var warning
-
-    //     T__ lp__(0.0);
-    //     stan::math::accumulator<T__> lp_accum__;
-
-    //     // model parameters
-    //     stan::io::reader<T__> in__(params_r__,params_i__);
-
-    //     T__ ksi;
-    //     (void) ksi;   // dummy to suppress unused var warning
-    //     if (jacobian__)
-    //         ksi = in__.scalar_lub_constrain(ksi_lb,ksi_ub,lp__);
-    //     else
-    //         ksi = in__.scalar_lub_constrain(ksi_lb,ksi_ub);
-
-    //     Eigen::Matrix<T__,Eigen::Dynamic,1>  sigma;
-    //     (void) sigma;   // dummy to suppress unused var warning
-    //     if (jacobian__)
-    //         sigma = in__.vector_lub_constrain(sigma_lb,sigma_ub,W,lp__);
-    //     else
-    //         sigma = in__.vector_lub_constrain(sigma_lb,sigma_ub,W);
-
-    //     Eigen::Matrix<T__,Eigen::Dynamic,1>  lambda;
-    //     (void) lambda;   // dummy to suppress unused var warning
-    //     if (jacobian__)
-    //         lambda = in__.vector_lb_constrain(0,W,lp__);
-    //     else
-    //         lambda = in__.vector_lb_constrain(0,W);
-
-    //     Eigen::Matrix<T__,Eigen::Dynamic,1>  mu;
-    //     (void) mu;   // dummy to suppress unused var warning
-    //     if (jacobian__)
-    //         mu = in__.vector_constrain(W,lp__);
-    //     else
-    //         mu = in__.vector_constrain(W);
-
-    //     vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > mu_t;
-    //     size_t dim_mu_t_0__ = W;
-    //     mu_t.reserve(dim_mu_t_0__);
-    //     for (size_t k_0__ = 0; k_0__ < dim_mu_t_0__; ++k_0__) {
-    //         if (jacobian__)
-    //             mu_t.push_back(in__.vector_constrain(T,lp__));
-    //         else
-    //             mu_t.push_back(in__.vector_constrain(T));
-    //     }
-
-    //     vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > alpha_s;
-    //     size_t dim_alpha_s_0__ = W;
-    //     alpha_s.reserve(dim_alpha_s_0__);
-    //     for (size_t k_0__ = 0; k_0__ < dim_alpha_s_0__; ++k_0__) {
-    //         if (jacobian__)
-    //             alpha_s.push_back(in__.vector_constrain(N_knots,lp__));
-    //         else
-    //             alpha_s.push_back(in__.vector_constrain(N_knots));
-    //     }
-
-    //     vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > alpha_t;
-    //     size_t dim_alpha_t_0__ = (W * (T - 1));
-    //     alpha_t.reserve(dim_alpha_t_0__);
-    //     for (size_t k_0__ = 0; k_0__ < dim_alpha_t_0__; ++k_0__) {
-    //         if (jacobian__)
-    //             alpha_t.push_back(in__.vector_constrain(N_knots,lp__));
-    //         else
-    //             alpha_t.push_back(in__.vector_constrain(N_knots));
-    //     }
-
-    //     vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > g;
-    //     size_t dim_g_0__ = W;
-    //     g.reserve(dim_g_0__);
-    //     for (size_t k_0__ = 0; k_0__ < dim_g_0__; ++k_0__) {
-    //         if (jacobian__)
-    //             g.push_back(in__.vector_constrain((N * T),lp__));
-    //         else
-    //             g.push_back(in__.vector_constrain((N * T)));
-    //     }
-
-
-    //     // transformed parameters
-
-    //     // initialized transformed params to avoid seg fault on val access
-
-
-    //     // validate transformed parameters
-
-    //     const char* function__ = "validate transformed params %1%";
-    //     (void) function__; // dummy to suppress unused var warning
-    //     // model body
-    //     {
-    //         vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > mu_g(W, (Eigen::Matrix<T__,Eigen::Dynamic,1> ((N * T))));
-    //         stan::math::fill(mu_g,DUMMY_VAR__);
-    //         Eigen::Matrix<T__,Eigen::Dynamic,1>  sum_exp_g((N * T));
-    //         (void) sum_exp_g;   // dummy to suppress unused var warning
-    //         stan::math::fill(sum_exp_g,DUMMY_VAR__);
-    //         vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > r((N * T), (Eigen::Matrix<T__,Eigen::Dynamic,1> (K)));
-    //         stan::math::fill(r,DUMMY_VAR__);
-    //         vector<Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> > q_s(W, (Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> (N,N_knots)));
-    //         stan::math::fill(q_s,DUMMY_VAR__);
-    //         vector<Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> > Q_s(W, (Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> (N_knots,N_knots)));
-    //         stan::math::fill(Q_s,DUMMY_VAR__);
-    //         vector<Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> > Q_s_L(W, (Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> (N_knots,N_knots)));
-    //         stan::math::fill(Q_s_L,DUMMY_VAR__);
-    //         vector<Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> > Q_s_inv(W, (Eigen::Matrix<T__,Eigen::Dynamic,Eigen::Dynamic> (N_knots,N_knots)));
-    //         stan::math::fill(Q_s_inv,DUMMY_VAR__);
-    //         Eigen::Matrix<T__,Eigen::Dynamic,1>  sigma2(W);
-    //         (void) sigma2;   // dummy to suppress unused var warning
-    //         stan::math::fill(sigma2,DUMMY_VAR__);
-    //         T__ cvar;
-    //         (void) cvar;   // dummy to suppress unused var warning
-    //         T__ qvar;
-    //         (void) qvar;   // dummy to suppress unused var warning
-    //         Eigen::Matrix<T__,Eigen::Dynamic,1>  Halpha_s(N);
-    //         (void) Halpha_s;   // dummy to suppress unused var warning
-    //         stan::math::fill(Halpha_s,DUMMY_VAR__);
-    //         Eigen::Matrix<T__,Eigen::Dynamic,1>  Halpha_t(N);
-    //         (void) Halpha_t;   // dummy to suppress unused var warning
-    //         stan::math::fill(Halpha_t,DUMMY_VAR__);
-    //         vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > qQinv_alpha((T - 1), (Eigen::Matrix<T__,Eigen::Dynamic,1> (N)));
-    //         stan::math::fill(qQinv_alpha,DUMMY_VAR__);
-    //         Eigen::Matrix<T__,1,Eigen::Dynamic>  c_i(N_knots);
-    //         (void) c_i;   // dummy to suppress unused var warning
-    //         stan::math::fill(c_i,DUMMY_VAR__);
-    //         Eigen::Matrix<T__,1,Eigen::Dynamic>  q_i(N_knots);
-    //         (void) q_i;   // dummy to suppress unused var warning
-    //         stan::math::fill(q_i,DUMMY_VAR__);
-    //         Eigen::Matrix<T__,Eigen::Dynamic,1>  sqrtvar((N * T));
-    //         (void) sqrtvar;   // dummy to suppress unused var warning
-    //         stan::math::fill(sqrtvar,DUMMY_VAR__);
-    //         stan::math::initialize(mu_g, DUMMY_VAR__);
-    //         stan::math::initialize(sum_exp_g, DUMMY_VAR__);
-    //         stan::math::initialize(r, DUMMY_VAR__);
-    //         stan::math::initialize(q_s, DUMMY_VAR__);
-    //         stan::math::initialize(Q_s, DUMMY_VAR__);
-    //         stan::math::initialize(Q_s_L, DUMMY_VAR__);
-    //         stan::math::initialize(Q_s_inv, DUMMY_VAR__);
-    //         stan::math::initialize(sigma2, DUMMY_VAR__);
-    //         stan::math::initialize(cvar, DUMMY_VAR__);
-    //         stan::math::initialize(qvar, DUMMY_VAR__);
-    //         stan::math::initialize(Halpha_s, DUMMY_VAR__);
-    //         stan::math::initialize(Halpha_t, DUMMY_VAR__);
-    //         stan::math::initialize(qQinv_alpha, DUMMY_VAR__);
-    //         stan::math::initialize(c_i, DUMMY_VAR__);
-    //         stan::math::initialize(q_i, DUMMY_VAR__);
-    //         stan::math::initialize(sqrtvar, DUMMY_VAR__);
-    //         lp_accum__.add(normal_log<propto__>(mu, 0, 20));
-    //         for (int k = 1; k <= W; ++k) {
-    //             lp_accum__.add(normal_log<propto__>(get_base1(get_base1(mu_t,k,"mu_t",1),1,"mu_t",2), 0.0, 20.0));
-    //         }
-    //         for (int k = 1; k <= W; ++k) {
-    //             stan::math::assign(get_base1_lhs(sigma2,k,"sigma2",1), (get_base1(sigma,k,"sigma",1) * get_base1(sigma,k,"sigma",1)));
-    //         }
-    //         for (int k = 1; k <= W; ++k) {
-    //             stan::math::assign(get_base1_lhs(q_s,k,"q_s",1), exp(divide(minus(d_inter),get_base1(lambda,k,"lambda",1))));
-    //             stan::math::assign(get_base1_lhs(Q_s,k,"Q_s",1), exp(divide(minus(d_knots),get_base1(lambda,k,"lambda",1))));
-    //             stan::math::assign(get_base1_lhs(Q_s_L,k,"Q_s_L",1), cholesky_decompose(get_base1(Q_s,k,"Q_s",1)));
-    //             stan::math::assign(get_base1_lhs(Q_s_inv,k,"Q_s_inv",1), transpose(mdivide_right_tri_low(transpose(mdivide_left_tri_low(get_base1(Q_s_L,k,"Q_s_L",1),Eye_knots)),get_base1(Q_s_L,k,"Q_s_L",1))));
-    //         }
-    //         for (int k = 1; k <= W; ++k) {
-    //             lp_accum__.add(multi_normal_prec_log<propto__>(get_base1(alpha_s,k,"alpha_s",1), zeros, multiply((1 / get_base1(eta2,k,"eta2",1)),get_base1(C_s_inv,k,"C_s_inv",1))));
-    //             stan::math::assign(Halpha_s, multiply(get_base1(c_s,k,"c_s",1),multiply(get_base1(C_s_inv,k,"C_s_inv",1),get_base1(alpha_s,k,"alpha_s",1))));
-    //             for (int i = 1; i <= N; ++i) {
-    //                 for (int t = 1; t <= T; ++t) {
-    //                     stan::math::assign(get_base1_lhs(get_base1_lhs(mu_g,k,"mu_g",1),(((i - 1) * T) + t),"mu_g",2), get_base1(Halpha_s,i,"Halpha_s",1));
-    //                 }
-    //             }
-    //             stan::math::assign(get_base1_lhs(mu_g,k,"mu_g",1), get_base1(mu_g,k,"mu_g",1));
-    //             if (pstream__) {
-    //                 stan_print(pstream__,"Here");
-    //                 *pstream__ << std::endl;
-    //             }
-    //             lp_accum__.add(multi_normal_prec_log<propto__>(get_base1(alpha_t,(((k - 1) * (T - 1)) + 1),"alpha_t",1), zeros, multiply((1 / get_base1(sigma2,k,"sigma2",1)),get_base1(Q_s_inv,k,"Q_s_inv",1))));
-    //             if (pstream__) {
-    //                 stan_print(pstream__,"k = ");
-    //                 stan_print(pstream__,k);
-    //                 *pstream__ << std::endl;
-    //             }
-    //             for (int t = 2; t <= (T - 1); ++t) {
-    //                 if (pstream__) {
-    //                     stan_print(pstream__,"index = ");
-    //                     stan_print(pstream__,((((k - 1) * (T - 1)) + t) - 1));
-    //                     *pstream__ << std::endl;
-    //                 }
-    //                 lp_accum__.add(multi_normal_prec_log<propto__>(get_base1(alpha_t,(((k - 1) * (T - 1)) + t),"alpha_t",1), get_base1(alpha_t,((((k - 1) * (T - 1)) + t) - 1),"alpha_t",1), multiply((1 / get_base1(sigma2,k,"sigma2",1)),get_base1(Q_s_inv,k,"Q_s_inv",1))));
-    //             }
-    //             for (int t = 1; t <= (T - 1); ++t) {
-    //                 stan::math::assign(get_base1_lhs(qQinv_alpha,t,"qQinv_alpha",1), multiply(multiply(get_base1(q_s,k,"q_s",1),get_base1(Q_s_inv,k,"Q_s_inv",1)),get_base1(alpha_t,(((k - 1) * (T - 1)) + t),"alpha_t",1)));
-    //             }
-    //             for (int i = 2; i <= T; ++i) {
-    //                 lp_accum__.add(normal_log<propto__>(get_base1(get_base1(mu_t,k,"mu_t",1),i,"mu_t",2), get_base1(get_base1(mu_t,k,"mu_t",1),(i - 1),"mu_t",2), ksi));
-    //             }
-    //             for (int i = 1; i <= N; ++i) {
-    //                 stan::math::assign(c_i, row(get_base1(c_s,k,"c_s",1),i));
-    //                 stan::math::assign(cvar, multiply(multiply(multiply(get_base1(eta2,k,"eta2",1),c_i),get_base1(C_s_inv,k,"C_s_inv",1)),transpose(c_i)));
-    //                 stan::math::assign(q_i, row(get_base1(q_s,k,"q_s",1),i));
-    //                 stan::math::assign(qvar, multiply(multiply(multiply(get_base1(sigma2,k,"sigma2",1),q_i),get_base1(Q_s_inv,k,"Q_s_inv",1)),transpose(q_i)));
-    //                 stan::math::assign(get_base1_lhs(get_base1_lhs(mu_g,k,"mu_g",1),(((i - 1) * T) + 1),"mu_g",2), ((get_base1(mu,k,"mu",1) + get_base1(get_base1(mu_t,k,"mu_t",1),1,"mu_t",2)) + get_base1(get_base1(mu_g,k,"mu_g",1),(((i - 1) * T) + 1),"mu_g",2)));
-    //                 stan::math::assign(get_base1_lhs(sqrtvar,(((i - 1) * T) + 1),"sqrtvar",1), sqrt((get_base1(eta2,k,"eta2",1) - cvar)));
-    //                 for (int t = 2; t <= T; ++t) {
-    //                     stan::math::assign(get_base1_lhs(get_base1_lhs(mu_g,k,"mu_g",1),(((i - 1) * T) + t),"mu_g",2), (((get_base1(mu,k,"mu",1) + get_base1(get_base1(mu_t,k,"mu_t",1),t,"mu_t",2)) + get_base1(get_base1(mu_g,k,"mu_g",1),(((i - 1) * T) + t),"mu_g",2)) + get_base1(get_base1(qQinv_alpha,(t - 1),"qQinv_alpha",1),i,"qQinv_alpha",2)));
-    //                     stan::math::assign(get_base1_lhs(sqrtvar,(((i - 1) * T) + t),"sqrtvar",1), sqrt((((get_base1(eta2,k,"eta2",1) - cvar) + get_base1(sigma2,k,"sigma2",1)) - qvar)));
-    //                 }
-    //             }
-    //             for (int i = 1; i <= (N * T); ++i) {
-    //                 lp_accum__.add(normal_log<propto__>(get_base1(get_base1(g,k,"g",1),i,"g",2), get_base1(get_base1(mu_g,k,"mu_g",1),i,"mu_g",2), get_base1(sqrtvar,i,"sqrtvar",1)));
-    //             }
-    //         }
-    //         for (int i = 1; i <= (N * T); ++i) {
-    //             stan::math::assign(get_base1_lhs(sum_exp_g,i,"sum_exp_g",1), 0.0);
-    //             for (int k = 1; k <= W; ++k) {
-    //                 stan::math::assign(get_base1_lhs(sum_exp_g,i,"sum_exp_g",1), (get_base1(sum_exp_g,i,"sum_exp_g",1) + exp(get_base1(get_base1(g,k,"g",1),i,"g",2))));
-    //             }
-    //         }
-    //         for (int k = 1; k <= W; ++k) {
-    //             for (int i = 1; i <= (N * T); ++i) {
-    //                 stan::math::assign(get_base1_lhs(get_base1_lhs(r,i,"r",1),k,"r",2), (exp(get_base1(get_base1(g,k,"g",1),i,"g",2)) / (1 + get_base1(sum_exp_g,i,"sum_exp_g",1))));
-    //             }
-    //         }
-    //         for (int i = 1; i <= (N * T); ++i) {
-    //             stan::math::assign(get_base1_lhs(get_base1_lhs(r,i,"r",1),K,"r",2), (1 / (1 + get_base1(sum_exp_g,i,"sum_exp_g",1))));
-    //         }
-    //         {
-    //             vector<Eigen::Matrix<T__,Eigen::Dynamic,1> > r_new((N_cores * T), (Eigen::Matrix<T__,Eigen::Dynamic,1> (K)));
-    //             stan::math::fill(r_new,DUMMY_VAR__);
-    //             Eigen::Matrix<T__,Eigen::Dynamic,1>  out_sum(K);
-    //             (void) out_sum;   // dummy to suppress unused var warning
-    //             stan::math::fill(out_sum,DUMMY_VAR__);
-    //             T__ sum_w;
-    //             (void) sum_w;   // dummy to suppress unused var warning
-    //             int idx_core(0);
-    //             (void) idx_core;   // dummy to suppress unused var warning
-    //             stan::math::initialize(r_new, DUMMY_VAR__);
-    //             stan::math::initialize(out_sum, DUMMY_VAR__);
-    //             stan::math::initialize(sum_w, DUMMY_VAR__);
-    //             for (int i = 1; i <= N_cores; ++i) {
-    //                 for (int t = 1; t <= T; ++t) {
-    //                     stan::math::assign(idx_core, (((get_base1(idx_cores,i,"idx_cores",1) - 1) * T) + t));
-    //                     stan::math::assign(get_base1_lhs(r_new,(((i - 1) * T) + t),"r_new",1), multiply(gamma,get_base1(r,idx_core,"r",1)));
-    //                     for (int k = 1; k <= K; ++k) {
-    //                         stan::math::assign(get_base1_lhs(out_sum,k,"out_sum",1), 0);
-    //                     }
-    //                     stan::math::assign(sum_w, 0);
-    //                     for (int j = 1; j <= N; ++j) {
-    //                         if (as_bool(logical_gt(get_base1(d,get_base1(idx_cores,i,"idx_cores",1),j,"d",1),0))) {
-    //                             stan::math::assign(out_sum, add(out_sum,multiply(get_base1(w,i,j,"w",1),get_base1(r,(((j - 1) * T) + t),"r",1))));
-    //                         }
-    //                     }
-    //                     stan::math::assign(sum_w, sum(out_sum));
-    //                     stan::math::assign(get_base1_lhs(r_new,(((i - 1) * T) + t),"r_new",1), add(get_base1(r_new,(((i - 1) * T) + t),"r_new",1),divide(multiply(out_sum,(1 - gamma)),sum_w)));
-    //                 }
-    //             }
-    //             {
-    //                 T__ N_grains;
-    //                 (void) N_grains;   // dummy to suppress unused var warning
-    //                 T__ A;
-    //                 (void) A;   // dummy to suppress unused var warning
-    //                 Eigen::Matrix<T__,Eigen::Dynamic,1>  kappa(K);
-    //                 (void) kappa;   // dummy to suppress unused var warning
-    //                 stan::math::fill(kappa,DUMMY_VAR__);
-    //                 stan::math::initialize(N_grains, DUMMY_VAR__);
-    //                 stan::math::initialize(A, DUMMY_VAR__);
-    //                 stan::math::initialize(kappa, DUMMY_VAR__);
-    //                 for (int i = 1; i <= (N_cores * T); ++i) {
-    //                     if (as_bool(logical_gt(sum(get_base1(y,i,"y",1)),0))) {
-    //                         stan::math::assign(kappa, elt_multiply(phi,get_base1(r_new,i,"r_new",1)));
-    //                         stan::math::assign(A, sum(kappa));
-    //                         stan::math::assign(N_grains, sum(get_base1(y,i,"y",1)));
-    //                         lp_accum__.add(((lgamma((N_grains + 1)) + lgamma(A)) - lgamma((N_grains + A))));
-    //                         for (int k = 1; k <= K; ++k) {
-    //                             lp_accum__.add(((-(lgamma((get_base1(get_base1(y,i,"y",1),k,"y",2) + 1))) + lgamma((get_base1(get_base1(y,i,"y",1),k,"y",2) + get_base1(kappa,k,"kappa",1)))) - lgamma(get_base1(kappa,k,"kappa",1))));
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     lp_accum__.add(lp__);
-    //     return lp_accum__.sum();
-
-    // } // log_prob()
-
-    // template <bool propto, bool jacobian, typename T>
-    // T log_prob(Eigen::Matrix<T,Eigen::Dynamic,1>& params_r,
-    //            std::ostream* pstream = 0) const {
-    //   std::vector<T> vec_params_r;
-    //   vec_params_r.reserve(params_r.size());
-    //   for (int i = 0; i < params_r.size(); ++i)
-    //     vec_params_r.push_back(params_r(i));
-    //   std::vector<int> vec_params_i;
-    //   return log_prob<propto,jacobian,T>(vec_params_r, vec_params_i, pstream);
-    // }
 
 
     void get_param_names(std::vector<std::string>& names__) const {
