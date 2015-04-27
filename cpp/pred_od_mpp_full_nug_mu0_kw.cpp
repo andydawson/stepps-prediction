@@ -1186,6 +1186,7 @@ public:
 		double dirmultp2 = digamma(y[si][m] + kappa(si,m)) - digamma(kappa(si,m));
 		double out_sum_si_m = out_sum(si,m);
 		double invsumw2 = 1 / (sum_w[m][si] * sum_w[m][si]);
+		double invsumw = 1 / sum_w[m][si];
 
 		double drnew, dr;
 
@@ -1197,27 +1198,21 @@ public:
 		  const double sumgp1 = 1 + sum_exp_g[C];
 		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 
-		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w[m](i,c) * sum_w[m][si] - w[m](i,c) * out_sum_si_m) * res * res * invsumw2;
-		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w[m](i,c) * out_sum_si_m) * res * res * invsumw2;
+		  // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
+		  const double drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * w[m](i,c) * res * res * invsumw;
 
-		  for (int mp=0; mp<K; ++mp) {
-
-		    // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
-		    drnew = (mp == m) ? drnew1 : drnew2;
-
-		    // compute dr = \partial r_{ctm'} / \partial g{ctk}
-		    if ((mp != K-1) && (mp != k)) {
-		      dr = -exp_g(C,mp) * exp_g(C,k) * sumgp1inv2;
-		    } else if (mp == K-1) {
-		      dr = -exp_g(C,k) * sumgp1inv2;
-		    } else if (mp == k) {
-		      dr = exp_g(C,mp) * (sumgp1 - exp_g(C,mp)) * sumgp1inv2;
-		    }
+		  // compute dr = \partial r_{ctm'} / \partial g{ctk}
+		  if ((m != K-1) && (m != k)) {
+		    dr = -exp_g(C,m) * exp_g(C,k) * sumgp1inv2;
+		  } else if (m == K-1) {
+		    dr = -exp_g(C,k) * sumgp1inv2;
+		  } else if (m == k) {
+		    dr = exp_g(C,m) * (sumgp1 - exp_g(C,m)) * sumgp1inv2;
+		  }
 		    
-		    // g
-		    int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
-		    gradient[idx] += fac1 * drnew * dr;
-		  } // mp
+		  // g
+		  int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
+		  gradient[idx] += fac1 * drnew * dr;
 		} // c
 	      } // m
 	    } // if
