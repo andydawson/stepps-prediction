@@ -58,7 +58,7 @@ namespace paleon
       }
       double avg = tot / seconds.size();
 
-      cout << msg << " min/max/avg/tot: " << min << " " << max << " " << avg << " " << tot << endl;
+      cout << msg << " tot/min/max/avg/tot: " << tot << " " << min << " " << max << " " << avg << " " << endl;
       // XXX: span
     }
 
