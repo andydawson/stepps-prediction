@@ -712,15 +712,15 @@ public:
       	  lp += sigma_lja[i];
 
       vector_d lambda(W), lambda_lja(W), lambda_ja(W), lambda_dj(W);
-      	for (int i=0; i<W; ++i)
-      	  lambda[i] = lub_transform(in.scalar(), lambda_lb, lambda_ub, lambda_lja[i], lambda_ja[i], lambda_dj[i]);
+      for (int i=0; i<W; ++i)
+	lambda[i] = lub_transform(in.scalar(), lambda_lb, lambda_ub, lambda_lja[i], lambda_ja[i], lambda_dj[i]);
 
       if (jacobian)
       	for (int i=0; i<W; ++i)
       	  lp += lambda_lja[i];
 
       vector_d  mu = in.vector_constrain(W,lp);
-
+      
       vector<vector_d> mu_t(W);
       for (int k = 0; k < W; ++k) {
       	if (jacobian)
@@ -813,6 +813,9 @@ public:
       }
 
       double lp_thrd[W];
+      for (int k = 0; k<W; ++k){
+	lp_thrd[k] = 0;
+      }
 
       #pragma omp parallel for
       for (int k = 0; k<W; ++k){
@@ -878,8 +881,7 @@ public:
 	    var_g[k][i] = 0.0;
 	  } 
 	  var_g[k][i] += 1;
-	  //XXX:uncomment after testing
-          //lp_thrd[k] += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
+          lp_thrd[k] += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 
       	exp_g.col(k) = exp(g[k]);
@@ -898,13 +900,13 @@ public:
 
       #pragma omp parallel for
       for (int i = 0; i < N*T; ++i)
-      	r(i,W) = 1. / (1. + sum_exp_g(i));
+      	r(i,K-1) = 1. / (1. + sum_exp_g(i));
 
       matrix_d r_new(N_cores * T, K);
       matrix_d out_sum(N_cores*T,K);
-      vector<vector_d> sum_w(W);
+      vector<vector_d> sum_w(K);
 
-      for (int k = 0; k < W; ++k) {
+      for (int k = 0; k < K; ++k) {
 	sum_w[k] = vector_d(N*T);
       }
 
@@ -912,8 +914,8 @@ public:
 
       timer_rnew.tic(0);
 
-      #pragma omp parallel for
-      for (int k = 0; k < W; ++k) {
+      //#pragma omp parallel for
+      for (int k = 0; k < K; ++k) {
 	for (int i = 0; i < N_cores; ++i) {
 	  for (int t = 0; t < T; ++t) {
 	    int idx_core = (idx_cores[i] - 1) * T + t;
@@ -939,7 +941,7 @@ public:
 
       timer_lgamma.tic(0);
 
-      // lp! #pragma omp parallel for
+      // lp! so don't use omp here
       for (int i = 0; i < N_cores * T; ++i) {
       	y_row_sum[i] = 0.0;
       	for (int k = 0; k < K; ++k)
@@ -1017,7 +1019,7 @@ public:
 	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix() / (lambda[k] * lambda[k]);
 	gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
 	gradient[1 + W + k] += 0.5 / sigma2[k] * alpha_t[k*(T-1)].transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * alpha_t[k*(T-1)];
-
+	
 	for (int t=1; t<(T-1); ++t){
 
 	  double alpha_Qinv_alpha_full;
@@ -1054,6 +1056,7 @@ public:
 
 	    int idx_g        = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + n*T + t;
 	    
+	    // uncomment these to add g
 	    // wrt g
 	    gradient[idx_g] -= AoverB;
 
@@ -1110,8 +1113,8 @@ public:
 	    double AoverB = A/B;
 
 	    // // uncomment these lines for lambda grad
-	    // gradient[1 + W + k] -= AoverB * dAdlam[n];
-	    // gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
+	    gradient[1 + W + k] -= AoverB * dAdlam[n];
+	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
 	   
       	  } // t
       	} // n
@@ -1210,7 +1213,8 @@ public:
 		    } else if (mp == k) {
 		      dr = exp_g(C,mp) * (sumgp1 - exp_g(C,mp)) * sumgp1inv2;
 		    }
-
+		    
+		    // g
 		    int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
 		    gradient[idx] += fac1 * drnew * dr;
 		  } // mp
@@ -1222,6 +1226,10 @@ public:
 	timer_dirmult.toc(k);
 	
       } // k
+
+      // for (int k = 0; k < W; ++k) {
+      // 	std::cout << gradient[1 + W + k] << std::endl;
+      // }
 
       std::cout<<"LP -----> " << lp << std::endl;
 
