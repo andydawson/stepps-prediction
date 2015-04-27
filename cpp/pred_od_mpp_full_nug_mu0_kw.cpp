@@ -1180,12 +1180,12 @@ public:
 	    if (y_row_sum[si] > 0.0) {
 
 	      double dirmultp1 = -digamma(A[si] + N_grains[si]) + digamma(A[si]);
-	      double invsumw2 = 1 / (sum_w[k][si] * sum_w[k][si]);
 
 	      for (int m=0; m<K; ++m) {
 
 		double dirmultp2 = digamma(y[si][m] + kappa(si,m)) - digamma(kappa(si,m));
 		double out_sum_si_m = out_sum(si,m);
+		double invsumw2 = 1 / (sum_w[m][si] * sum_w[m][si]);
 
 		double drnew, dr;
 
@@ -1197,8 +1197,8 @@ public:
 		  const double sumgp1 = 1 + sum_exp_g[C];
 		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 
-		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w[k](i,c) * sum_w[k][si] - w[k](i,c) * out_sum_si_m) * res * res * invsumw2;
-		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w[k](i,c) * out_sum_si_m) * res * res * invsumw2;
+		  const double drnew1 = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * (w[m](i,c) * sum_w[m][si] - w[m](i,c) * out_sum_si_m) * res * res * invsumw2;
+		  const double drnew2 = (idx_cores[i]-1 == c) ? 0.0 : (1-gamma) * (-w[m](i,c) * out_sum_si_m) * res * res * invsumw2;
 
 		  for (int mp=0; mp<K; ++mp) {
 
