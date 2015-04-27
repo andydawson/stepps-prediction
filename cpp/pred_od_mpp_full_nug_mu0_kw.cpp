@@ -601,7 +601,6 @@ public:
     double normal_log_double(const vector_d& y, const double mu, const double sigma) const {
       double lp = 0.0;
       double inv_sigma = 1.0/sigma;
-      double log_sigma = log(sigma);
 
       int size_y = y.size();
 
@@ -1048,9 +1047,7 @@ public:
 
 	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
 	    double B      = var_g[k][n*T+t];
-      	    double B2inv  = 1/(B*B);
 	    double AoverB = A/B;
-	    int idx_cell  = n*T+t;
 
 	    gradient[1 + 2*W + k] += AoverB;
 
@@ -1175,7 +1172,6 @@ public:
 	  for (int i=0; i<N_cores; ++i) {
 
 	    int si = i*T + t;
-	    int ci = (idx_cores[i]-1)*T + t;
 
 	    if (y_row_sum[si] > 0.0) {
 
@@ -1184,11 +1180,7 @@ public:
 	      for (int m=0; m<K; ++m) {
 
 		double dirmultp2 = digamma(y[si][m] + kappa(si,m)) - digamma(kappa(si,m));
-		double out_sum_si_m = out_sum(si,m);
-		double invsumw2 = 1 / (sum_w[m][si] * sum_w[m][si]);
 		double invsumw = 1 / sum_w[m][si];
-
-		double drnew, dr;
 
 		const double fac1 = (dirmultp1 + dirmultp2) * phi[m];
 
@@ -1200,6 +1192,8 @@ public:
 
 		  // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
 		  const double drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * w[m](i,c) * res * res * invsumw;
+
+		  double dr;
 
 		  // compute dr = \partial r_{ctm'} / \partial g{ctk}
 		  if ((m != K-1) && (m != k)) {
