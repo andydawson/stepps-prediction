@@ -17,7 +17,7 @@ is.projected(us.shp)
 # gridname = 'mn_3by'
 
 rescale    = 1e6
-nside      = 5
+nside      = 1
 cell_width = 8000/rescale
 
 grid = 'umw'
