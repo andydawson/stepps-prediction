@@ -31,11 +31,15 @@ us.shp <- readOGR('data/map_data/us_alb.shp', 'us_alb')
 # date of pollen_ts pull
 mydate = '2014-07-22'
 
+# use the veg knots? set to false for smaller test data sets
+veg_knots = TRUE
+
 # grid 
 res  = res
 side = side
-side = ''
-grid = 'MISP' # or 'umw'
+# side = 'E' # 'E', 'W', or ''
+# grid = 'MISP' 
+grid = 'umw'
 gridname = paste0(grid, side, '_', as.character(res), 'by')
 #gridname = 'umwE_3by'
 
@@ -49,8 +53,8 @@ rescale = 1e6
 
 # knots
 # nclust = 75
-clust.ratio = 6# approx clust.ratio knots per cell
-#clust.ratio = 7# approx clust.ratio knots per cell
+# clust.ratio = 6# approx clust.ratio knots per cell
+clust.ratio = 7# approx clust.ratio knots per cell
 # clust.ratio = 15  # approx clust.ratio knots per cell
 
 # suff=''
@@ -58,12 +62,11 @@ version="v0.3"
 suff    = paste(gridname, '_', version, sep='') 
 # suff = '3by_v0.3_test'
 
+# states_pol = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
+# states_pls = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
 
-states_pol = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
-states_pls = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
-
-# states_pol = c('minnesota', 'wisconsin', 'michigan:north')
-# states_pls = c('minnesota', 'wisconsin', 'michigan:north')
+states_pol = c('minnesota', 'wisconsin', 'michigan:north')
+states_pls = c('minnesota', 'wisconsin', 'michigan:north')
 
 cells = NA
 # cells = seq(1,100)
@@ -97,7 +100,9 @@ pollen_ts = read.table(paste('data/pollen_ts_', mydate, '.csv', sep=''), header=
 
 # read in calibration output
 # load('calibration/r/dump/cal_data_12taxa_mid_comp_all.rdata')
-fit = read_stan_csv('data/12taxa_mid_comp_long.csv')
+# cal_fit = read_stan_csv('data/calibration_output/12taxa_mid_comp_long.csv')
+
+cal_fit = rstan::read_stan_csv(paste0('data/calibration_output/', run$suff_fit,'.csv'))
 
 # read in veg data and output
 # veg data specifies which knots to use
@@ -297,6 +302,7 @@ if (!veg_knots){
     } 
     idx = choppy(knot_coords[,1], knot_coords[,2], cutlines)
     knot_coords = knot_coords[idx,]
+#     knot_coords2 = knot_coords[idx,]
   } 
 }
 
@@ -317,33 +323,108 @@ diag(d_knots) <- 0
 d_inter = rdist(centers_veg, knot_coords)
 d_inter[which(d_inter<1e-8)]=0
 
+d_pol = rdist(centers_pol, centers_veg)
+d_pol[which(d_pol<1e-8)]=0
+
 N_knots     = nrow(knot_coords)
 
 ##########################################################################################################################
 ## chunk: qr decompose X
 ##########################################################################################################################
+KW     = FALSE
+KGAMMA = FALSE
 
-col_substr = substr(names(summary(fit)$summary[,'mean']),1,2)
+kernel    = run$kernel
+post      = rstan::extract(cal_fit, permuted=FALSE, inc_warmup=FALSE)
+col_names = colnames(post[,1,])
+par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
 
-phi   = unname(summary(fit)$summary[,'mean'][which(col_substr == 'ph')])[1:K]
-phi[is.na(phi)] = 20
-psi   = unname(summary(fit)$summary[,'mean']['psi'])
-gamma = unname(summary(fit)$summary[,'mean']['gamma'])
+phi    = unname(colMeans(post[,1,which(par_names == 'phi')])[1:K])
 
+one_gamma = run$one_gamma
+if (one_gamma){
+#   gamma = rep(mean(post[,1,which(par_names == 'gamma')]), K)
+  gamma = unname(mean(post[,1,which(par_names == 'gamma')]))
+} else {
+  KGAMMA = TRUE
+  gamma = unname(colMeans(post[,1,which(par_names == 'gamma')])[1:K])
+}
+
+if (kernel=='gaussian'){
+  one_psi = run$one_psi
+  if (one_psi){
+#     psi   = rep(mean(post[,1,which(par_names == 'psi')]), K)
+    psi   = unname(mean(post[,1,which(par_names == 'psi')]))
+  } else {
+    KW = TRUE
+    psi   = unname(colMeans(post[,1,which(par_names == 'psi')])[1:K])
+  }
+} else if (kernel=='pl'){
+  one_a = run$one_a
+  if (one_a){
+#     a = rep(mean(post[,1,which(par_names == 'a')]), K)
+    a = unname(mean(post[,1,which(par_names == 'a')]))
+  } else {
+    KW = TRUE
+    a = unname(colMeans(post[,1,which(par_names == 'a')])[1:K])
+  }
+  
+  one_b = run$one_b
+  if (one_b){
+#     b = rep(mean(post[,1,which(par_names == 'b')]), K)
+    b = unname(mean(post[,1,which(par_names == 'b')]))
+  } else {
+    KW = TRUE
+    b = unname(colMeans(post[,1,which(par_names == 'b')])[1:K])
+  }
+}
+
+w <- build_weight_matrix(post, d_pol, idx_cores, N, N_cores, run)
+# head(apply(w, 1, rowSums))
+#####################################################################################
+# calculate potential d
+# used to determine C normalizing constant in the non-local contribution term
+#####################################################################################
+library(plyr)
+
+x_pot = seq(-528000, 528000, by=8000)
+y_pot = seq(-416000, 416000, by=8000)
+#x_pot = seq(-8000*16, 8000*16, by=8000)
+#y_pot = seq(-8000*13, 8000*13, by=8000)
+coord_pot = expand.grid(x_pot, y_pot)
+
+d_pot = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/rescale)
+# d_pot0 = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/rescale)
+d_pot = unname(as.matrix(count(d_pot)))
+
+N_pot = nrow(d_pot)
+
+# should we include focal cell?
+sum_w_pot = build_sumw_pot(post, K, N_pot, d_pot, run)
+# sum_w_pot0 = build_sumw_pot(post, K, 13965, cbind(d_pot0, rep(1,13965)), run)
+
+#####################################################################################
+# recompute gamma
+#####################################################################################
+w_coarse  = build_sumw_pot(post, K, length(d_hood), cbind(t(d_hood), rep(1, length(d_hood))), run)
+gamma_new = recompute_gamma(w_coarse, sum_w_pot, gamma)
+
+# #####################################################################################
+# # domain splitting check
+# #####################################################################################
+# w_all <- build_weight_matrix(post, d, idx_cores_all, N, length(idx_cores_all), run)
+# 
+# foo=apply(w_all, 1, rowSums)
+# 
+# pollen_check$sum_w = foo
+
+#####################################################################################
+# veg run pars
+#####################################################################################
 names_substr = substr(names(mean_pars),1,3)
 
 eta = unname(mean_pars[which(names_substr == 'eta')])[1:W]
 rho = unname(mean_pars[which(names_substr == 'rho')])[1:W]
-
-w <- build_weight_matrix(d, idx_cores, N, N_cores, psi)
-
-sum_w_pot <- build_sum_w_pot(psi, rescale)
-
-gamma = recompute_gamma(w, sum_w_pot, psi, gamma, d_hood)
-
-# domain splitting check
-w_all <- build_weight_matrix(d, idx_cores_all, N, length(idx_cores_all), psi)
-pollen_check$sum_w = rowSums(w_all)
 
 # ##########################################################################################################################
 # ## chunk: qr decompose X
@@ -367,6 +448,9 @@ pollen_check$sum_w = rowSums(w_all)
 ##########################################################################################################################
 ## save the data; rdata more efficient, use for processing
 ##########################################################################################################################
+if (kernel == 'gaussian'){ suff = paste0('G_', suff) } else if (kernel == 'pl'){suff = paste0('PL_', suff)}
+if (KGAMMA) suff = paste0('KGAMMA_', suff)
+if (KW) suff = paste0('KW', suff)
 
 dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
        'gamma', 'psi', 'phi', 'rho', 'eta',
@@ -374,23 +458,47 @@ dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
        'idx_cores', 
        'd', 'd_knots', 'd_inter', 'w',
        'lag',
-#        'P', 'N_p', 'sum_w_pot'),
-        'sum_w_pot', 'pollen_check'),
-#        'knot_coords',
-#        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
-     file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
+       #        'P', 'N_p', 'sum_w_pot'),
+       'sum_w_pot', 'pollen_check'),
+     #        'knot_coords',
+     #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
+     file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
 
 save(K, N, T, N_cores, N_knots, res,
-       gamma, psi, phi, rho, eta,
-       y, 
-       idx_cores, 
-       d, d_knots, d_inter, w,
-       lag,
-#        P, N_p, sum_w_pot,
-       sum_w_pot, pollen_check,
-       knot_coords,
-       centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
-       file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
+     gamma, psi, phi, rho, eta,
+     y, 
+     idx_cores, 
+     d, d_knots, d_inter, w,
+     lag,
+     #        P, N_p, sum_w_pot,
+     sum_w_pot, pollen_check,
+     knot_coords,
+     centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
+     file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
+
+# dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
+#        'gamma', 'psi', 'phi', 'rho', 'eta',
+#        'y', 
+#        'idx_cores', 
+#        'd', 'd_knots', 'd_inter', 'w',
+#        'lag',
+# #        'P', 'N_p', 'sum_w_pot'),
+#         'sum_w_pot', 'pollen_check'),
+# #        'knot_coords',
+# #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
+#      file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
+# 
+# save(K, N, T, N_cores, N_knots, res,
+#        gamma, psi, phi, rho, eta,
+#        y, 
+#        idx_cores, 
+#        d, d_knots, d_inter, w,
+#        lag,
+# #        P, N_p, sum_w_pot,
+#        sum_w_pot, pollen_check,
+#        knot_coords,
+#        centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
+#        file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
 
 # ##########################################################################################################################
 # ## build initial conditions

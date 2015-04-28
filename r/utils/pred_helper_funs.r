@@ -821,50 +821,171 @@ build_idx_cores <- function(centers_polU, centers_pls, N_cores){
   }
 return(idx_cores)
 }
-  
+
 # build the weight matrix
-build_weight_matrix <- function(d, idx_cores, N, N_cores, psi){
-
-  w = matrix(0, nrow=N_cores, ncol=N)
-
-  for (i in 1:N_cores){
-    for (j in 1:N){
-      print(paste0("i = ", i))
-      print(j)
-      if ( d[idx_cores[i],j] > 0 ) {
-        w[i,j] <- exp(-(d[idx_cores[i],j]/psi)^2)
-      } 
+build_weight_matrix <- function(post, d, idx_cores, N, N_cores, run){
+  
+  KW     = FALSE
+  kernel = run$kernel
+  phi    = colMeans(post[,1,which(par_names == 'phi')])[1:K]
+  
+  if (kernel=='gaussian'){
+    one_psi = run$one_psi
+    if (one_psi){
+      #       psi   = rep(mean(post[,1,which(par_names == 'psi')]), K)
+      psi = mean(post[,1,which(par_names == 'psi')])
+    } else {
+      KW  = TRUE
+      psi = colMeans(post[,1,which(par_names == 'psi')])
+    }
+  } else if (kernel=='pl'){
+    one_a = run$one_a
+    if (one_a){
+      #       a = rep(mean(post[,1,which(par_names == 'a')]), K)
+      a = mean(post[,1,which(par_names == 'a')])
+    } else {
+      KW = TRUE
+      a  = colMeans(post[,1,which(par_names == 'a')])
+    }
+    
+    one_b = run$one_b
+    if (one_b){
+      #       b = rep(mean(post[,1,which(par_names == 'b')]), K)
+      b = mean(post[,1,which(par_names == 'b')])
+    } else {
+      KW = TRUE
+      b  = colMeans(post[,1,which(par_names == 'b')])
     }
   }
+  
+  if (KW){
+    w = array(0, c(K, N_cores, N))
+    for (k in 1:K){
+      for (i in 1:N_cores){
+        for (j in 1:N){ 
+          if (j != idx_cores[i]){
+            if (kernel == 'gaussian'){
+              w[k,i,j] = exp(-(d[i,j]*d[i,j])/(psi[k]*psi[k]))
+            } else if (kernel == 'pl'){
+              w[k,i,j] = (b[k]-1) * (b[k]-2) / (2 * pi * a[k]  * a[k]) * (1 + d[i,j] / a[k]) ^ (-b[k])
+            }
+          } 
+        }
+      }
+    }
+  } else {
+    w = array(0, c(N_cores, N))
+      for (i in 1:N_cores){
+        for (j in 1:N){ 
+#           if (j != idx_cores[i]){
+            if (kernel == 'gaussian'){
+              w[i,j] = exp(-(d[i,j]*d[i,j])/(psi*psi))
+            } else if (kernel == 'pl'){
+              w[i,j] = (b-1) * (b-2) / (2 * pi * a  * a) * (1 + d[i,j] / a) ^ (-b)
+            }
+#           } 
+        }
+    }
+  }
+  
+  
+  #   for (i in 1:N_cores){
+  #     for (j in 1:N){
+  #       print(paste0("i = ", i))
+  #       print(j)
+  #       if ( d[idx_cores[i],j] > 0 ) {
+  #         w[i,j] <- exp(-(d[idx_cores[i],j]/psi)^2)
+  #       } 
+  #     }
+  #   }
+  
   
   return(w)
 }
 
+
 # build the total potential neighborhood weighting
-build_sum_w_pot <- function(psi, rescale){
+build_sumw_pot <- function(post, K, N_pot, d_pot, run){
   
-  x_pot = seq(-528000, 528000, by=8000)
-  y_pot = seq(-416000, 416000, by=8000)
-  coord_pot = expand.grid(x_pot, y_pot)
+  d_pot = d_pot[!(d_pot[,1] < 1e-8), ]
   
-  d_pot = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/rescale)
-  d_pot = unname(as.matrix(count(d_pot)))
+  KW = FALSE
+  kernel = run$kernel
   
-  N_pot = nrow(d_pot)
+  col_names = colnames(post[,1,])
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
   
-  sum_w_pot = 0
-  for (v in 1:N_pot){
-    sum_w_pot = sum_w_pot +  d_pot[v,2] *  exp(-(d_pot[v,1]/psi)^2)
+  if (kernel=='gaussian'){
+    one_psi = run$one_psi
+    if (one_psi){
+#       psi   = rep(mean(post[,1,which(par_names == 'psi')]), K)
+      psi = mean(post[,1,which(par_names == 'psi')])
+    } else {
+      KW  = TRUE
+      psi = colMeans(post[,1,which(par_names == 'psi')])
+    }
+    
+    if (KW){
+      sum_w = rep(NA, K)
+      for (k in 1:K)
+        sum_w[k] = sum(d_pot[,2] * exp(-d_pot[,1]^2/psi[k]^2))
+    } else {
+      sum_w = sum(d_pot[,2] * exp(-d_pot[,1]^2/psi^2))
+    }
+    
+  } else if (kernel=='pl'){
+    one_a = run$one_a
+    one_b = run$one_b
+    if (one_a){
+#       a = rep(mean(post[,1,which(par_names == 'a')]), K)
+      a = mean(post[,1,which(par_names == 'a')])
+    } else {
+      KW = TRUE
+      a = colMeans(post[,1,which(par_names == 'a')])
+    }
+    if (one_b){
+#       b = rep(mean(post[,1,which(par_names == 'b')]), K)
+      b = mean(post[,1,which(par_names == 'b')])
+    } else {
+      KW = TRUE
+      b = colMeans(post[,1,which(par_names == 'b')])
+    }
+
+    if (KW){
+      for (k in 1:K)
+        sum_w[k] = sum( d_pot[,2] * (b[k]-1) * (b[k]-2) / (2 * pi * a[k]  * a[k]) * (1 + d_pot[,1] / a[k])^(-b[k]) )
+    } else {
+      sum_w = sum( d_pot[,2] * (b-1) * (b-2) / (2 * pi * a  * a) * (1 + d_pot[,1] / a)^(-b) )
+    }
   }
-  return(sum_w_pot)
+  return(sum_w)
 }
 
+# # build the total potential neighborhood weighting
+# build_sum_w_pot <- function(psi, rescale){
+#   
+#   x_pot = seq(-528000, 528000, by=8000)
+#   y_pot = seq(-416000, 416000, by=8000)
+#   coord_pot = expand.grid(x_pot, y_pot)
+#   
+#   d_pot = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/rescale)
+#   d_pot = unname(as.matrix(count(d_pot)))
+#   
+#   N_pot = nrow(d_pot)
+#   
+#   sum_w_pot = 0
+#   for (v in 1:N_pot){
+#     sum_w_pot = sum_w_pot +  d_pot[v,2] *  exp(-(d_pot[v,1]/psi)^2)
+#   }
+#   return(sum_w_pot)
+# }
+
 # rescale gamma when the coarse grid is used
-recompute_gamma <- function(w, sum_w_pot, psi, gamma, d_hood){
+recompute_gamma <- function(w_coarse, sum_w_pot, gamma){
   
-  k = 21
-  weights = w[k, d_hood]
-  gamma_new = gamma + sum(weights) / sum_w_pot
+  core = 21
+
+  gamma_new = gamma + ( 1 - gamma) * w_coarse / sum_w_pot
   
   return(gamma_new)
   
