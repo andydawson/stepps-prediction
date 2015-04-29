@@ -807,7 +807,7 @@ plot_data_maps <- function(y, centers, taxa, t, N, K, T, thresh, limits, suff, s
 
 plot_data_maps_binned <- function(y, centers, taxa, t, N, K, T, breaks, limits, suff, save_plots, fpath=subDir){
   
-  rescale=1#1000000
+  rescale=1000000
   
   if (is.null(taxa)){taxa=seq(1,K)}
   
