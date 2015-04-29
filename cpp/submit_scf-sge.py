@@ -4,10 +4,13 @@ import subprocess
 runs = [ ('pred_1by_ALL',
           './pred_od_mpp_full_nug_mu0.exe \
           sample num_warmup=175 num_samples=1000 \
-          data file=../r/dump/12taxa_6341cells_120knots_0to2000ypb_PL_umw_1by_v0.3.dump \
-          output file=../output/12taxa_6341cells_120knots_0to2000ypb_PL_umw_1by_v0.3.csv \
+          data file=../r/dump/12taxa_4199cells_79knots_0to2000ypb_PL_umwW_1by_v0.3.dump \
+          output file=../output/12taxa_4199cells_79knots_0to2000ypb_PL_umwW_1by_v0.3.csv \
           random seed=42')
 ]
+
+         # data file=../r/dump/12taxa_6341cells_120knots_0to2000ypb_PL_umw_1by_v0.3.dump \
+         #  output file=../output/12taxa_6341cells_120knots_0to2000ypb_PL_umw_1by_v0.3.csv \
 
 qsub = """
 #!/bin/sh
