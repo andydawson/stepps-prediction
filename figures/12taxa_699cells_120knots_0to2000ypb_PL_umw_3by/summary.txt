@@ -1,18 +1,8 @@
-
-> print('The taxa modelled are:')
 [1] "The taxa modelled are:"
-
-> taxa
  [1] "ASH"            "BEECH"          "BIRCH"          "ELM"            "HEMLOCK"        "MAPLE"         
  [7] "OAK"            "OTHER.CONIFER"  "OTHER.HARDWOOD" "PINE"           "SPRUCE"         "TAMARACK"      
 
-> cat('\n')
-
-
-> print('Summary of posterior parameter vals:')
 [1] "Summary of posterior parameter vals:"
-
-> get_quants(post, N_pars)
         ksi    sigma[1]    sigma[2]    sigma[3]    sigma[4]    sigma[5]    sigma[6]    sigma[7]    sigma[8] 
  0.03585260  1.13311548  0.88904710  1.01910206  1.04094354  0.87198417  1.24508529  1.15380689  1.11887677 
    sigma[9]   sigma[10]   sigma[11]   lambda[1]   lambda[2]   lambda[3]   lambda[4]   lambda[5]   lambda[6] 
@@ -21,5 +11,3 @@
  0.03673411  0.01679875  0.01958312  0.02594987  0.02105976 -1.62420316 -4.02371981 -1.24217374 -1.32897394 
       mu[5]       mu[6]       mu[7]       mu[8]       mu[9]      mu[10]      mu[11] 
 -3.92334071 -0.73790020 -0.25635546 -1.79255645  0.02533779 -1.59875987 -1.95411923 
-
-> sink()
