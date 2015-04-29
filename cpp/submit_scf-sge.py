@@ -22,7 +22,7 @@ qsub = """
 #$ -l hostname=scf-sm12
 #$ -R y
 
-cd $HOME/Documents/projects/stepps-predictions/cpp
+cd $HOME/Documents/projects/stepps-prediction/cpp
 export OMP_NUM_THREADS={threads}
 {command}
 """
