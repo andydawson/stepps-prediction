@@ -1071,13 +1071,13 @@ public:
 
 	matrix_d dAp1;
 	matrix_d dBdlam;
-	matrix_d qt = q_s[k].transpose();
+	//matrix_d qt = q_s[k].transpose();
 
 	matrix_d Ht_dQ_Qsinv = H_t[k] * dQ * Q_s_inv[k];
 	matrix_d dq_Q_s_inv  = dq * Q_s_inv[k];
 
 	dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq_Q_s_inv + Ht_dQ_Qsinv ); 
-	dBdlam = ( - dq_Q_s_inv + Ht_dQ_Qsinv ) * qt - H_t[k] * dq.transpose();
+	dBdlam = ( - dq_Q_s_inv + Ht_dQ_Qsinv ) * q_s[k].transpose() - H_t[k] * dq.transpose();
 	dBdlam = dBdlam * sigma2[k] * lambda_inv[k] * lambda_inv[k];
 
 	// dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq + H_t[k] * dQ) * Q_s_inv[k]; 
@@ -1095,27 +1095,34 @@ public:
 	    double B      = var_g[k][n*T+t+1];
 	    double AoverB = A/B;
 
-	    // uncomment these lines for lambda grad
+	    // lambda 
 	    gradient[1 + W + k] -= AoverB * dAdlam[n];
 	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
-	   
-      	  } // t
-      	} // n
-	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
-
-      	for (int n=0; n<N; ++n){
-      	  for (int t=0; t<(T-1); ++t){
-
-	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
-	    double B      = var_g[k][n*T+t+1];
-	    double AoverB = A/B;
 
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_t = 1 + W*3 + W*(T-1) + W*N_knots + (k*(T-1) + t)*N_knots + v;
 	      gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
 	    }
-      	  } // n
-      	} // t
+	   
+      	  } // t
+      	} // n
+
+	// lambda jacobian adjustment
+	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
+
+      	// for (int n=0; n<N; ++n){
+      	//   for (int t=0; t<(T-1); ++t){
+
+	//     double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
+	//     double B      = var_g[k][n*T+t+1];
+	//     double AoverB = A/B;
+
+	//     for (int v=0; v<N_knots; ++v){
+	//       int idx_alpha_t = 1 + W*3 + W*(T-1) + W*N_knots + (k*(T-1) + t)*N_knots + v;
+	//       gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
+	//     }
+      	//   } // n
+      	// } // t
 
 	timer_gnormal.toc(k);
 
