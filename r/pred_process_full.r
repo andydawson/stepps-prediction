@@ -27,7 +27,7 @@ source('r/utils/pred_helper_funs.r')
 # suff_fit = '12taxa_699cells_120knots_0to2000ypb_umw_3by_od_mpp_full_nug_mu0_res'
 
 suff_dat = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3'
-suff_fit = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by'
+suff_fit = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_tmp'
 
 # where to put the figures
 subDir <- paste("figures/", suff_fit, sep='')
@@ -52,8 +52,8 @@ create_figure_path(subDir)
 load(paste('r/dump/', suff_dat, '.rdata', sep=''))
 
 if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
-  fname = sprintf('output/%s.csv', suff_fit)
 #   fname = sprintf('output/%s.csv', suff_fit)
+  fname = sprintf('output/%s.csv', suff_fit)
   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
   fit = read_stan_csv(fname)
   post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
