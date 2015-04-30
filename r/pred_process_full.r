@@ -49,7 +49,7 @@ save_plots = TRUE
 
 create_figure_path(subDir)
 
-load(paste('r/dump/pred_data_', suff_dat, '.rdata', sep=''))
+load(paste('r/dump/', suff_dat, '.rdata', sep=''))
 
 if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
   fname = sprintf('tmp/%s.csv', suff_fit)
