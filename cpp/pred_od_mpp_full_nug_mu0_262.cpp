@@ -67,7 +67,7 @@ namespace pred_model_namespace {
     vector<matrix_d> C_s_inv;
     vector<matrix_d> c_s;
     vector<matrix_d> H_s;
-    matrix_d M;
+    //matrix_d M;
     vector<matrix_d> M_H_s;
 
     Eigen::HouseholderQR<vector_d> qr;
@@ -354,9 +354,9 @@ namespace pred_model_namespace {
       stan::math::validate_non_negative_index("H_s", "N", N);
       stan::math::validate_non_negative_index("H_s", "N_knots", N_knots);
       H_s = std::vector<matrix_d>((K - 1),matrix_d(N,N_knots));
-      stan::math::validate_non_negative_index("M", "(N * T)", (N * T));
-      stan::math::validate_non_negative_index("M", "(N * T)", (N * T));
-      M = matrix_d((N * T),(N * T));
+      // stan::math::validate_non_negative_index("M", "(N * T)", (N * T));
+      // stan::math::validate_non_negative_index("M", "(N * T)", (N * T));
+      // M = matrix_d((N * T),(N * T));
       stan::math::validate_non_negative_index("M_H_s", "N", N);
       stan::math::validate_non_negative_index("M_H_s", "N_knots", N_knots);
       M_H_s = std::vector<matrix_d>((K-1),matrix_d(N,N_knots));
@@ -1098,7 +1098,7 @@ namespace pred_model_namespace {
       	//   } // n
       	// } // t
 
-	timer_gnormal.toc(k);
+	timer_gnormal2.toc(k);
 
 
 	// partial of MVN for alpha_t (wrt alpha_t)
