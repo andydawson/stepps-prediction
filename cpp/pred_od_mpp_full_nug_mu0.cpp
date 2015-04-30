@@ -1638,7 +1638,7 @@ namespace stan {
 
       for (size_t i = 0; i < params_r.size(); i++)
         params_r[i] = x[i];
-      f = model.template log_prob_grad<true, true, false>(params_r, grad, msgs);
+      f = model.log_prob_grad<true, true, false>(params_r, grad, msgs);
       for (size_t i = 0; i < params_r.size(); i++)
         grad_f[i] = grad[i];
     }
