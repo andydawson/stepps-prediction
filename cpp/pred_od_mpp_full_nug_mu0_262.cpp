@@ -361,7 +361,6 @@ namespace pred_model_namespace {
       stan::math::validate_non_negative_index("M_H_s", "N_knots", N_knots);
       M_H_s = std::vector<matrix_d>((K-1),matrix_d(N,N_knots));
 
-
       stan::math::assign(W, (K - 1));
       for (int k = 1; k <= W; ++k) {
         stan::math::assign(get_base1_lhs(eta2,k,"eta2",1), (get_base1(eta,k,"eta",1) * get_base1(eta,k,"eta",1)));
