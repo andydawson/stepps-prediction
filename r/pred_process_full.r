@@ -1,3 +1,5 @@
+library(Rcpp)
+library(inline)
 library(ggplot2)
 library(rstan)
 library(reshape)
