@@ -52,7 +52,7 @@ create_figure_path(subDir)
 load(paste('r/dump/', suff_dat, '.rdata', sep=''))
 
 if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
-  fname = sprintf('tmp/%s.csv', suff_fit)
+  fname = sprintf('output/%s.csv', suff_fit)
 #   fname = sprintf('output/%s.csv', suff_fit)
   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
   fit = read_stan_csv(fname)
