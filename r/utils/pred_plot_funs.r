@@ -241,7 +241,7 @@ plot_pred_maps <- function(r_mean, centers, taxa, t, N, K, T, thresh, limits, ty
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1)
+    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12)
 #     dev.off()
   }
   return(p)
@@ -295,7 +295,7 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1)
+    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
     #     dev.off()
   }
   return(p)
@@ -356,8 +356,8 @@ pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N, K, T
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.pdf', sep=''), scale=1)
-    ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.eps', sep=''), scale=1)
+    ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
+    ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.eps', sep=''), scale=1, width=12, height=12)
     #     dev.off()
   }
   return(p)
@@ -397,7 +397,7 @@ plot_data_maps <- function(y, centers, taxa, t, N, K, T, thresh, limits, suff, s
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1)
+    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12)
 #     dev.off()
   }
    return(p)
@@ -849,8 +849,8 @@ plot_data_maps_binned <- function(y, centers, taxa, t, N, K, T, breaks, limits, 
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1)
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.eps', sep=''), scale=1)
+    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12)
+    ggsave(file=paste(fpath, '/veg_maps_', suff, '.eps', sep=''), scale=1, width=12)
     #     dev.off()
   }
   return(p)
