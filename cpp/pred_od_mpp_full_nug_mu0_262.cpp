@@ -650,7 +650,7 @@ namespace pred_model_namespace {
       double lp = 0.0;
 
       paleon::Timer timer_lpg(1), timer_fac(1), timer_varg(W), timer_rnew(1), timer_lgamma(1),
-	timer_mvn(W), timer_gnormal(W), timer_gnormal2(W), timer_alphat(W), timer_dirmult(W);
+	timer_mvn(W), timer_gnormal(W), timer_alphat(W), timer_dirmult(W);
 
       timer_lpg.tic(0);
 
@@ -683,7 +683,7 @@ namespace pred_model_namespace {
       	for (int i=0; i<W; ++i)
       	  lp += lambda_lja[i];
 
-      vector_d  mu = in.vector_constrain(W,lp);
+      vector_d mu = in.vector_constrain(W,lp);
 
       vector<vector_d> mu_t(W);
       for (int k = 0; k < W; ++k) {
@@ -717,24 +717,12 @@ namespace pred_model_namespace {
       	  g[k] = in.vector_constrain((N * T));
       }
 
-      std::cout << "LP after constraints : " << lp << std::endl;
-
-
       //
       // compute log probability
       //
 
       // priors
       lp += normal_log_double(mu, 0, mu_std);
-
-      std::cout << "LP after mu prior : " << lp << std::endl;
-
-      // double mut0_sd;
-      // mut0_sd = 20.0;
-
-      // for (int k=0; k<W; ++k){
-      // 	lp += normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1);
-      // }
 
       vector<double> lambda_inv(W);
       vector<double> sigma2(W);
@@ -744,15 +732,13 @@ namespace pred_model_namespace {
       vector<matrix_d> Q_s_L(W);
       vector<matrix_d> Q_s_inv(W);
 
+      timer_fac.tic(0);
+
+      #pragma omp parallel for
       for (int k=0; k<W; ++k) {
       	sigma2[k] = sigma[k] * sigma[k];
       	lambda_inv[k] = 1.0 / lambda[k];
-      }
 
-      timer_fac.tic(0);
-
-#pragma omp parallel for
-      for (int k=0; k<W; ++k) {
       	Q_s[k] = (- lambda_inv[k] * d_knots.array()).exp().matrix();
       	q_s[k] = (- lambda_inv[k] * d_inter.array()).exp().matrix();
 	LLT<matrix_d> llt_Qs = Q_s[k].llt();
@@ -763,7 +749,6 @@ namespace pred_model_namespace {
       timer_fac.toc(0);
 
       vector<vector_d> qvar(W);
-      // vector<matrix_d> H_s(W);
       vector<matrix_d> H_t(W);
 
       vector<vector_d> var_g(W);
@@ -778,52 +763,40 @@ namespace pred_model_namespace {
 
       double lp_thrd[W];
 
-#pragma omp parallel for
-      for (int k = 0; k<W; ++k){
-      	lp_thrd[k] = multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k], true);
+      #pragma omp parallel for
+      for (int k = 0; k<W; ++k) {
 
-	// H_s[k] = c_s[k] * C_s_inv[k];
-	//vector_d Halpha_s = H_s[k] * alpha_s[k];
+       	lp_thrd[k] = multi_normal_cholesky_log_double(alpha_s[k], zeros, eta[k] * C_s_L[k], true);
+
 	vector_d M_Halpha_s = M_H_s[k] * alpha_s[k];
 
-      	for (int i = 0; i<N; ++i){
-      	  for (int t = 0; t<T; ++t){
-      	    //mu_g[k][i * T + t] = Halpha_s[i];
+      	for (int i = 0; i<N; ++i)
+      	  for (int t = 0; t<T; ++t)
 	    mu_g[k][i * T + t] = M_Halpha_s[i];
-      	  }
-      	}
 
 	// first nonzero alpha_t
 	lp_thrd[k] += multi_normal_cholesky_log_double(alpha_t[k * (T-1)], zeros, sigma[k] * Q_s_L[k], false);
-
-	for (int t=1; t<(T-1); ++t){
+	for (int t=1; t<(T-1); ++t)
 	  lp_thrd[k] += multi_normal_cholesky_log_double(alpha_t[k * (T-1) + t], alpha_t[k * (T-1) + t-1], sigma[k] * Q_s_L[k]);
-      	}
 
 	H_t[k] = q_s[k] * Q_s_inv[k];
 
 	vector<vector_d> qQinv_alpha(T);
-	for (int t=0; t<(T-1); ++t){
+	for (int t=0; t<(T-1); ++t)
 	  qQinv_alpha[t] = H_t[k] * alpha_t[k * (T-1) + t];
-	}
 
       	// time-varying mean
 	lp_thrd[k] += normal_log_double(mu_t[k][0], 0, ksi, 0);
-
-      	for (int t=1; t<T-1; ++t){
+      	for (int t=1; t<T-1; ++t)
       	  lp_thrd[k] += normal_log_double(mu_t[k][t], mu_t[k][t-1], ksi,  0);
-      	}
-
-	row_vector_d c_i;
-	row_vector_d q_i;
 
 	timer_varg.tic(k);
-
       	for (int i = 0; i<N; ++i){
-      	  c_i  = c_s[k].row(i);
+      	  row_vector_d c_i  = c_s[k].row(i);
+      	  row_vector_d q_i  = q_s[k].row(i);
+
       	  double cvar = eta2[k] * c_i * C_s_inv[k] * c_i.transpose();
 
-      	  q_i  = q_s[k].row(i);
       	  qvar[k][i] = q_i * Q_s_inv[k] * q_i.transpose();
 
       	  mu_g[k][i * T] = mu[k] + mu_g[k][i * T];
@@ -838,10 +811,9 @@ namespace pred_model_namespace {
 	timer_varg.toc(k);
 
       	for (int i = 0; i<N*T; ++i){
-	  if (var_g[k][i] <= 1.e-8) {
+	  if (var_g[k][i] <= 1.e-8)
 	    var_g[k][i] = 0.0;
-	  }
-	  var_g[k][i] += 1;
+	  var_g[k][i] += 1.0;
           lp_thrd[k] += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 
@@ -854,12 +826,12 @@ namespace pred_model_namespace {
       vector_d sum_exp_g = exp_g.rowwise().sum();
       matrix_d r(N*T,K);
 
-#pragma omp parallel for
+      #pragma omp parallel for
       for (int k = 0; k < W; ++k)
       	for (int i = 0; i < N*T; ++i)
       	  r(i,k) = exp_g(i,k) / (1. + sum_exp_g(i));
 
-#pragma omp parallel for
+      #pragma omp parallel for
       for (int i = 0; i < N*T; ++i)
       	r(i,W) = 1. / (1. + sum_exp_g(i));
 
@@ -871,7 +843,7 @@ namespace pred_model_namespace {
 
       timer_rnew.tic(0);
 
-#pragma omp parallel for
+      #pragma omp parallel for
       for (int i = 0; i < N_cores; ++i) {
 	for (int t = 0; t < T; ++t) {
 	  int idx_core = (idx_cores[i] - 1) * T + t;
@@ -903,25 +875,22 @@ namespace pred_model_namespace {
       	  y_row_sum[i] += y[i][k];
 
       	if (y_row_sum[i] > 0) {
-      	  for (int k = 0; k < K; ++k){
+      	  for (int k = 0; k < K; ++k)
       	    kappa(i,k) = phi(k) * r_new(i,k);
-      	  }
 
       	  A[i] = kappa.row(i).sum();
       	  N_grains[i] = y_row_sum[i];
 
       	  lp += lgamma(N_grains[i] + 1.0) + lgamma(A[i]) - lgamma(N_grains[i] + A[i]);
-      	  for (int k = 0; k < K; ++k) {
+      	  for (int k = 0; k < K; ++k)
       	    lp += -lgamma(y[i][k] + 1) + lgamma(y[i][k] + kappa(i,k)) - lgamma(kappa(i,k));
-      	  }
       	}
       }
 
       timer_lgamma.toc(0);
 
-      if (lp_only) {
+      if (lp_only)
         return lp;
-      }
 
       fill(gradient.begin(), gradient.end(), 0.0);
 
@@ -935,20 +904,21 @@ namespace pred_model_namespace {
 
       // partial of mu_t normal
 
-#pragma omp parallel for
+      double inv_ksi2 = 1.0 / (ksi * ksi);
+
+      #pragma omp parallel for
       for (int k=0; k<W; ++k) {
+
 	for (int t=1; t<T-1; ++t){
 	  int idx_mut = 1 + 3*W + k*(T-1) + t;
-	  gradient[idx_mut] += - (mu_t[k][t] - mu_t[k][t-1]) / ( ksi * ksi );
-
-	  if (t<T-2){
-	    gradient[idx_mut] +=  (mu_t[k][t+1] - mu_t[k][t]) / ( ksi * ksi );
-	  }
+	  gradient[idx_mut] -= inv_ksi2 * (mu_t[k][t] - mu_t[k][t-1]);
+	  if (t<T-2)
+	    gradient[idx_mut] += inv_ksi2 * (mu_t[k][t+1] - mu_t[k][t]);
 	}
 
 	// mu_t[k][0]
-	gradient[1 + 3*W + k*(T-1)] += - mu_t[k][0] / ( ksi * ksi );
-	gradient[1 + 3*W + k*(T-1)] += (mu_t[k][1] - mu_t[k][0]) / ( ksi * ksi );
+	gradient[1 + 3*W + k*(T-1)] -= inv_ksi2 * mu_t[k][0];
+	gradient[1 + 3*W + k*(T-1)] += inv_ksi2 * (mu_t[k][1] - mu_t[k][0]);
 
 	// partial of g (wrt mu_t)
       	for (int n=0; n<N; ++n){
@@ -969,8 +939,7 @@ namespace pred_model_namespace {
 
 	timer_mvn.tic(k);
 
-	double alpha_Qinv_alpha_first;
-	alpha_Qinv_alpha_first = (alpha_t[k*(T-1)]).transpose() * Q_s_inv[k] * alpha_t[k*(T-1)];
+	double alpha_Qinv_alpha_first = (alpha_t[k*(T-1)]).transpose() * Q_s_inv[k] * alpha_t[k*(T-1)];
 
 	gradient[1 + k] += -N_knots / sigma[k];
 	gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_first;
@@ -999,10 +968,25 @@ namespace pred_model_namespace {
 	// partials of g normal
 	timer_gnormal.tic(k);
 
+	matrix_d dq = (q_s[k].array() * d_inter.array()).matrix();
+	matrix_d dQ = (Q_s[k].array() * d_knots.array()).matrix();
+
+        matrix_d Ht_dQ_Qsinv = H_t[k] * dQ * Q_s_inv[k];
+	matrix_d dq_Q_s_inv  = dq * Q_s_inv[k];
+
+	matrix_d dAp1 = lambda_inv[k] * lambda_inv[k] * (- dq_Q_s_inv + Ht_dQ_Qsinv );
+	matrix_d dBdlam = ( - dq_Q_s_inv + Ht_dQ_Qsinv ) * q_s[k].transpose() - H_t[k] * dq.transpose();
+	dBdlam *= sigma2[k] * lambda_inv[k] * lambda_inv[k];
+
 	matrix_d dqdlamk = (q_s[k].array() * d_inter.array()).matrix();
 	dQdlamk = (Q_s[k].array() * d_knots.array()).matrix(); // use as above (so fix denom)
 
 	for (int t=0; t<T; ++t){
+
+	  vector_d dAdlam;
+          if (t > 0)
+            dAdlam = dAp1 * alpha_t[k*(T-1)+t-1];
+
 	  for (int n=0; n<N; ++n){
 
 	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
@@ -1011,94 +995,35 @@ namespace pred_model_namespace {
 
 	    gradient[1 + 2*W + k] += AoverB;
 
-	    int idx_g        = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + n*T + t;
-
 	    // wrt g
+	    int idx_g = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + n*T + t;
 	    gradient[idx_g] -= AoverB;
 
-	    // wrt sigma
-	    if (t > 0){
+	    if (t > 0) {
+              // wrt sigma
 	      gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
-	    }
+
+              // wrt lambda
+              gradient[1 + W + k] -= AoverB * dAdlam[n];
+              gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
+            }
 
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_s  = 1 + W*3 + W*(T-1) +  k*N_knots + v;
-	      // wrt alph_s
-	      //gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
 	      gradient[idx_alpha_s] += AoverB * M_H_s[k](n,v);
 	    }
 
-      	  } // n
+            if (t > 0) {
+              for (int v=0; v<N_knots; ++v){
+                int idx_alpha_t = 1 + W*3 + W*(T-1) + W*N_knots + (k*(T-1) + t-1)*N_knots + v;
+                gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
+              }
+            }
+          } // n
       	} // t
 
-	timer_gnormal.toc(k);
-
 	gradient[1 + k] = gradient[1 + k] * sigma_ja[k] + sigma_dj[k];
-
-	// partials of g normal
-
-	timer_gnormal2.tic(k);
-
-	matrix_d dq = (q_s[k].array() * d_inter.array()).matrix();
-	matrix_d dQ = (Q_s[k].array() * d_knots.array()).matrix();
-
-	matrix_d dAp1;
-	matrix_d dBdlam;
-	//matrix_d qt = q_s[k].transpose();
-
-	matrix_d Ht_dQ_Qsinv = H_t[k] * dQ * Q_s_inv[k];
-	matrix_d dq_Q_s_inv  = dq * Q_s_inv[k];
-
-	dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq_Q_s_inv + Ht_dQ_Qsinv );
-	dBdlam = ( - dq_Q_s_inv + Ht_dQ_Qsinv ) * q_s[k].transpose() - H_t[k] * dq.transpose();
-	dBdlam = dBdlam * sigma2[k] * lambda_inv[k] * lambda_inv[k];
-
-	// dAp1   = lambda_inv[k] * lambda_inv[k] * (- dq + H_t[k] * dQ) * Q_s_inv[k];
-	// dBdlam = -dq * Q_s_inv[k] * qt + H_t[k] * dQ * Q_s_inv[k] * qt - H_t[k] * dq.transpose();
-	// dBdlam = dBdlam * sigma2[k] * lambda_inv[k] * lambda_inv[k];
-
-	for (int t=0; t<(T-1); ++t){
-
-	  vector_d dAdlam;
-	  dAdlam = dAp1 * alpha_t[k*(T-1)+t];
-
-	  for (int n=0; n<N; ++n){
-
-	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
-	    double B      = var_g[k][n*T+t+1];
-	    double AoverB = A/B;
-
-	    // lambda
-	    gradient[1 + W + k] -= AoverB * dAdlam[n];
-	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
-
-	    for (int v=0; v<N_knots; ++v){
-	      int idx_alpha_t = 1 + W*3 + W*(T-1) + W*N_knots + (k*(T-1) + t)*N_knots + v;
-	      gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
-	    }
-
-      	  } // t
-      	} // n
-
-	// lambda jacobian adjustment
 	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
-
-      	// for (int n=0; n<N; ++n){
-      	//   for (int t=0; t<(T-1); ++t){
-
-	//     double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
-	//     double B      = var_g[k][n*T+t+1];
-	//     double AoverB = A/B;
-
-	//     for (int v=0; v<N_knots; ++v){
-	//       int idx_alpha_t = 1 + W*3 + W*(T-1) + W*N_knots + (k*(T-1) + t)*N_knots + v;
-	//       gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
-	//     }
-      	//   } // n
-      	// } // t
-
-	timer_gnormal2.toc(k);
-
 
 	// partial of MVN for alpha_t (wrt alpha_t)
 	vector_d Qinv_alphat_next;
@@ -1187,7 +1112,6 @@ namespace pred_model_namespace {
       timer_lgamma.echo(" > lgamma ");
       timer_mvn.echo(" > mvn    ");
       timer_gnormal.echo(" > gnorm  ");
-      timer_gnormal2.echo(" > gnorm2 ");
       timer_alphat.echo(" > alphat ");
       timer_dirmult.echo(" > dirmult");
 
@@ -1205,15 +1129,6 @@ namespace pred_model_namespace {
       return log_prob_grad<propto, jacobian, true>(params_r, gradient, msgs);
 
     }
-
-
-    // template <bool propto, bool jacobian, typename T>
-    // T log_prob(Eigen::Matrix<T,Eigen::Dynamic,1>& params_r,
-    //            std::ostream* pstream = 0) const {
-
-    //   throw "log_prob called";
-
-    // }
 
 
     void get_param_names(std::vector<std::string>& names__) const {
