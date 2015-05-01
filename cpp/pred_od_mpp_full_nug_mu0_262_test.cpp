@@ -1061,14 +1061,6 @@ namespace pred_model_namespace {
 	//const double invsumw = 1 / sum_w_pot;
 	const double drnew_case2 = (1-gamma) * res * res * 1 / sum_w_pot; 
 
-	vector_d sumgp1(N*T);
-	vector_d sumgp1inv2(N*T);
-
-	for (int j=0; j<N*T; ++j){
-	  sumgp1[j] = 1 + sum_exp_g[j];
-	  sumgp1inv2[j] = 1 / (sumgp1[j]*sumgp1[j]);
-	} 
-
 	timer_dirmult.tic(k);
 	for (int t=0; t<T; ++t) {
 	  for (int i=0; i<N_cores; ++i) {
@@ -1089,8 +1081,8 @@ namespace pred_model_namespace {
 		for (int c=0; c<N; ++c) {
 
 		  int C = c*T + t;
-		  // const double sumgp1 = 1 + sum_exp_g[C];
-		  // const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
+		  const double sumgp1 = 1 + sum_exp_g[C];
+		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 		  
 		  // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
 		  // const double drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * w(i,c) * res * res * invsumw;
@@ -1100,11 +1092,11 @@ namespace pred_model_namespace {
 		  // compute dr = \partial r_{ctm'} / \partial g{ctk}
 		  double dr;
 		  if ((m != K-1) && (m != k)) {
-		    dr = -exp_g(C,m) * exp_g(C,k) * sumgp1inv2[C];
+		    dr = -exp_g(C,m) * exp_g(C,k) * sumgp1inv2;
 		  } else if (m == K-1) {
-		    dr = -exp_g(C,k) * sumgp1inv2[C];
+		    dr = -exp_g(C,k) * sumgp1inv2;
 		  } else if (m == k) {
-		    dr = exp_g(C,m) * (sumgp1[C] - exp_g(C,m)) * sumgp1inv2[C];
+		    dr = exp_g(C,m) * (sumgp1 - exp_g(C,m)) * sumgp1inv2;
 		  }
 
 		  const int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
