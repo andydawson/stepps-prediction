@@ -1059,7 +1059,7 @@ namespace pred_model_namespace {
 	// partial of dirmult
 
 	//const double invsumw = 1 / sum_w_pot;
-	const int idx_g_base =  1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T;
+	const int idx_base_g =  1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T;
 	const double drnew_case2 = (1-gamma) * res * res * 1 / sum_w_pot; 
 
 	timer_dirmult.tic(k);
