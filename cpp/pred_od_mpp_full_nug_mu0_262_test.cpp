@@ -1058,12 +1058,14 @@ namespace pred_model_namespace {
 
 	// partial of dirmult
 
-	const double invsumw = 1 / sum_w_pot;
+	//const double invsumw = 1 / sum_w_pot;
+	const double drnew_case2 = (1-gamma) * res * res * 1 / sum_w_pot; 
 
 	timer_dirmult.tic(k);
 	for (int t=0; t<T; ++t) {
 	  for (int i=0; i<N_cores; ++i) {
 
+	    const int idx_core = idx_cores[i] - 1;
 	    const int si = i*T + t;
 
 	    if (y_row_sum[si] > 0.0) {
@@ -1083,8 +1085,10 @@ namespace pred_model_namespace {
 		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
 
 		  // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
-		  const double drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * w(i,c) * res * res * invsumw;
+		  // const double drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * w(i,c) * res * res * invsumw;
 
+		  // const double drnew = (idx_cores[i]-1 == c) ? gamma : w(i,c);
+		  const double drnew = (idx_core == c) ? gamma : w(i,c) * drnew_case2;
 		  // compute dr = \partial r_{ctm'} / \partial g{ctk}
 		  double dr;
 		  if ((m != K-1) && (m != k)) {
