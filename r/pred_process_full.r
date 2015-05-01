@@ -26,11 +26,11 @@ source('r/utils/pred_helper_funs.r')
 # suff_dat = '12taxa_699cells_120knots_0to2000ypb_umw_3by_v0.3'
 # suff_fit = '12taxa_699cells_120knots_0to2000ypb_umw_3by_od_mpp_full_nug_mu0_res'
 
-# suff_dat = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3'
-# suff_fit = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_tmp'
-
-suff_dat = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3'
-suff_fit = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_tmp'
+# # suff_dat = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3'
+# # suff_fit = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_tmp'
+# 
+# suff_dat = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3'
+# suff_fit = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_tmp'
 
 # where to put the figures
 subDir <- paste("figures/", suff_fit, sep='')
