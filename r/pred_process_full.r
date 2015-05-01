@@ -26,8 +26,11 @@ source('r/utils/pred_helper_funs.r')
 # suff_dat = '12taxa_699cells_120knots_0to2000ypb_umw_3by_v0.3'
 # suff_fit = '12taxa_699cells_120knots_0to2000ypb_umw_3by_od_mpp_full_nug_mu0_res'
 
-suff_dat = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3'
-suff_fit = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_tmp'
+# suff_dat = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3'
+# suff_fit = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_tmp'
+
+suff_dat = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3'
+suff_fit = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_tmp'
 
 # where to put the figures
 subDir <- paste("figures/", suff_fit, sep='')
@@ -264,9 +267,9 @@ plot_data_maps_binned(y_veg, centers=centers_pls, taxa=taxa, ages, N_pls, K, T, 
 
 
 # N_cores and centers_polU broken for split domain data....
-
+idx.keep  = c(1,2,length(ages)/2,T)
 # plot_core_locations(y, centers_polU, centers_pls, ages, limits)
-plot_core_locations_select(y, centers_pol, centers_pls, ages, limits, fpath=subDir)
+plot_core_locations_select(y, centers_pol, centers_pls, ages, idx.keep, limits, fpat=subDir)
 
 
 # plot5<-grid.arrange(arrangeGrob(c, p_binned, nrow=1), 
