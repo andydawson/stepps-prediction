@@ -1059,6 +1059,7 @@ namespace pred_model_namespace {
 	// partial of dirmult
 
 	//const double invsumw = 1 / sum_w_pot;
+	const int idx_g_base =  1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T;
 	const double drnew_case2 = (1-gamma) * res * res * 1 / sum_w_pot; 
 
 	timer_dirmult.tic(k);
@@ -1099,8 +1100,9 @@ namespace pred_model_namespace {
 		    dr = exp_g(C,m) * (sumgp1 - exp_g(C,m)) * sumgp1inv2;
 		  }
 
-		  const int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
-		  gradient[idx] += fac1 * drnew * dr;
+		  //const int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
+		  const int idx_g = idx_base_g + c*T + t;
+		  gradient[idx_g] += fac1 * drnew * dr;
 		} // c
 	      } // m
 	    } // if
