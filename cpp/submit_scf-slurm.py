@@ -1,18 +1,19 @@
 import subprocess
 
-runs = [ ('pred_G_3by_ALL',
-          './pred_od_mpp_full_nug_mu0.exe \
-          sample num_warmup=75 num_samples=1000 save_warmup=1\
-          data file=../r/dump/12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3.dump \
-          output file=../output/12taxa_699cells_120knots_0to2000ypb_G_umw_3by.csv\
-          random seed=42'),
-         ('pred_PL_1by_ALL',
+runs = [ ('pred_PL_1by_ALL',
           './pred_od_mpp_full_nug_mu0_262_test.exe \
           sample num_warmup=75 num_samples=1000 save_warmup=1\
-          data file= ../r/dump/12taxa_6341cells_120knots_0to2000ypb_PL_umw_1by_v0.3.dump\           
-          output file=../output/12taxa_6341cells_120knots_0to2000ypb_PL_umw_3by.csv\
+          data file= ../r/dump/12taxa_6341cells_120knots_0to2000ypb_PL_umw_1by_v0.3.dump \
+          output file=../output/12taxa_6341cells_120knots_0to2000ypb_PL_umw_1by.csv \
           random seed=42')
 ]
+
+ # ('pred_G_3by_ALL',
+ #          './pred_od_mpp_full_nug_mu0.exe \
+ #          sample num_warmup=75 num_samples=1000 save_warmup=1\
+ #          data file=../r/dump/12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3.dump \
+ #          output file=../output/12taxa_699cells_120knots_0to2000ypb_G_umw_3by.csv\
+ #          random seed=42'),
 
 qsub = """\
 #!/bin/sh
