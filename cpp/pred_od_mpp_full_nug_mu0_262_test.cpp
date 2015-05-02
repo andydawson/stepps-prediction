@@ -1079,44 +1079,31 @@ namespace pred_model_namespace {
 		const double dirmultp2 = digamma(y[si][m] + kappa(si,m)) - digamma(kappa(si,m));
 		const double fac1 = (dirmultp1 + dirmultp2) * phi[m];
 
-		if ((m != K-1) && (m != k)) {
+		for (int c=0; c<N; ++c) {
 
-		  for (int c=0; c<N; ++c) {
-		    int C = c*T + t;
-		    const double sumgp1 = 1 + sum_exp_g[C];
-		    const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
-		    const double drnew = (idx_core == c) ? gamma : w(i,c) * drnew_case2;
-		    const double dr = -exp_g(C,m) * exp_g(C,k) * sumgp1inv2;
-		    const int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
-		    gradient[idx] += fac1 * drnew * dr;
+		  int C = c*T + t;
+		  const double sumgp1 = 1 + sum_exp_g[C];
+		  const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
+		  
+		  // compute drnew = \partial r^{new}_{itm} / \partial r_{ctm'}
+		  // const double drnew = (idx_cores[i]-1 == c) ? gamma : (1-gamma) * w(i,c) * res * res * invsumw;
+
+		  // const double drnew = (idx_cores[i]-1 == c) ? gamma : w(i,c);
+		  const double drnew = (idx_core == c) ? gamma : w(i,c) * drnew_case2;
+		  // compute dr = \partial r_{ctm'} / \partial g{ctk}
+		  double dr;
+		  if ((m != K-1) && (m != k)) {
+		    dr = -exp_g(C,m) * exp_g(C,k) * sumgp1inv2;
+		  } else if (m == K-1) {
+		    dr = -exp_g(C,k) * sumgp1inv2;
+		  } else if (m == k) {
+		    dr = exp_g(C,m) * (sumgp1 - exp_g(C,m)) * sumgp1inv2;
 		  }
 
-		} else if (m == K-1) {
-
-		  for (int c=0; c<N; ++c) {
-		    int C = c*T + t;
-		    const double sumgp1 = 1 + sum_exp_g[C];
-		    const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
-		    const double drnew = (idx_core == c) ? gamma : w(i,c) * drnew_case2;
-		    const double dr = -exp_g(C,k) * sumgp1inv2;
-		    const int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
-		    gradient[idx] += fac1 * drnew * dr;
-		  }
-
-		} else if (m == k) {
-
-		  for (int c=0; c<N; ++c) {
-
-		    int C = c*T + t;
-		    const double sumgp1 = 1 + sum_exp_g[C];
-		    const double sumgp1inv2 = 1 / (sumgp1*sumgp1);
-		    const double drnew = (idx_core == c) ? gamma : w(i,c) * drnew_case2;
-		    double dr = exp_g(C,m) * (sumgp1 - exp_g(C,m)) * sumgp1inv2;
-		    const int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
-		    gradient[idx] += fac1 * drnew * dr;
-		  } // c
-		}
-
+		  const int idx = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + c*T + t;
+		  // const int idx_g = idx_base_g + c*T + t;
+		  gradient[idx] += fac1 * drnew * dr;
+		} // c
 	      } // m
 	    } // if
 	  } // i
