@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+"""Convert a STAN CSV file to an R RDATA file.
+
+Usage: stan2rdata OUTPUT.csv
+
+This creates OUTPUT.rdata, which contains two R matrices: 'warmup' and
+'samples'.
+
+"""
+
+import os
+import sys
+import tempfile
+
+import numpy as np
+import pandas
+
+import rpy2.robjects
+import rpy2.robjects.numpy2ri
+
+
+#
+# split stan output into two: warmup and samples
+#
+
+stan = sys.argv[1]
+warmup, fwarmup  = tempfile.mkstemp()
+samples, fsamples = tempfile.mkstemp()
+
+warmup, samples = os.fdopen(warmup, 'w'), os.fdopen(samples, 'w')
+
+header = None
+with open(stan, 'r') as csv:
+    dst = warmup
+    for l in csv:
+        if l.startswith('lp__'):
+            header = l.strip().split(',')
+            warmup.write(l)
+            samples.write(l)
+        elif l.startswith('# Adaptation terminated'):
+            dst = samples
+        elif not l.startswith('#'):
+            dst.write(l)
+
+warmup.close()
+samples.close()
+
+#
+# read warmup and samples, use 32 bit floating point
+#
+
+floats = list(header)
+floats.remove('treedepth__')
+floats.remove('n_divergent__')
+
+dtypes  = { x: np.float32 for x in floats }
+warmup  = pandas.read_csv(fwarmup, dtype=dtypes)
+samples = pandas.read_csv(fsamples, dtype=dtypes)
+
+#
+# instantiate R and save warmup and samples into an RDATA file
+#
+
+r = rpy2.robjects.r
+rpy2.robjects.numpy2ri.activate()
+
+r.assign('warmup', warmup.as_matrix(floats))
+r.assign('samples', samples.as_matrix(floats))
+r.assign('floats', floats)
+r('colnames(warmup) = floats')
+r('colnames(samples) = floats')
+
+output = os.path.splitext(sys.argv[1])[0] + '.rdata'
+r('save(warmup, samples, file="{output}")'.format(output=output))
+
+#
+# tidy up
+#
+os.unlink(fwarmup)
+os.unlink(fsamples)
