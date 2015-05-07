@@ -1,53 +1,39 @@
+/*
+ * Parse a STAN CSV file and save as a binary.  File format is:
+ *
+ * nwarmup    - int, 1: number of warmup samples
+ * nsamples   - int, 1: number of samples
+ * nparams    - int, 1: number of parameters
+ * warmup     - float, nparams*nwarmup: warmup samples, row major
+ * samples    - float, nparams*nsamples: samples, row major
+ * parameters - char, nparams: parameter names (null terminated C strings)
+ */
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#define BUFLEN (64*1024*1024)
+#define CBUFLEN  1024
+#define LBUFLEN  (64*1024*1024)
 #define PARAMLEN 64
 
-int main(int argc, char *argv[])
+int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
 {
-  char *cbuf;
-  FILE *stan, *rdata;
+  char  cbuf[CBUFLEN];
+  int   i;
+  int   ntok;
+  char *tok;
+  int   zeros[] = { 0, 0, 0 };
 
-  cbuf = malloc(BUFLEN);
-  if (cbuf == NULL) {
-    fprintf(stderr, "Memory allocation error.\n");
-    return 2;
-  }
-
-  if (argc != 2) {
-    printf("Usage: stan2bin STANOUTPUT\n");
-    return 1;
-  }
+  char *params = NULL;
+  float *values = NULL;
+  int nparams = 0;
+  int nwarmup = 0;
+  int nsamples = 0;
 
   /*
-   * open stan file
+   * write 3 zeros, will overwrite with proper dimensions later
    */
-
-  snprintf(cbuf, BUFLEN, "%s.csv", argv[1]);
-  stan = fopen(cbuf, "r");
-  if (stan == NULL) {
-    snprintf(cbuf, BUFLEN, "Error opening STAN file '%s.csv'", argv[1]);
-    perror(cbuf);
-    return 1;
-  }
-
-  /*
-   * open binary file
-   */
-
-  snprintf(cbuf, BUFLEN, "%s.bin", argv[1]);
-  rdata = fopen(cbuf, "wb");
-  if (rdata == NULL) {
-    snprintf(cbuf, BUFLEN, "Error opening BIN file '%s.bin'", argv[1]);
-    perror(cbuf);
-    return 1;
-  }
-
-  // write 3 zeros, will overwrite with proper dimensions later
-  int zeros[] = { 0, 0, 0 };
   fwrite(zeros, sizeof(int), 3, rdata);
 
   /*
@@ -57,59 +43,64 @@ int main(int argc, char *argv[])
    * 2. switch to 'samples' mode when we see "# Adaptation terminated"
    */
 
-  char *params;
-  float *values;
-  int nparams = 0;
-  int nsamples = 0;
+  while (fgets(lbuf, LBUFLEN, stan) != NULL) {
 
-  while (fgets(cbuf, BUFLEN, stan) != NULL) {
+    if (strncmp(lbuf, "lp__", 4) == 0) {
 
-    if (strncmp(cbuf, "# Adapt", 7) == 0) {
-      // done with warmup
-      fseek(rdata, 0, SEEK_SET);
-      fwrite(&nsamples, sizeof(int), 1, rdata);
-      fseek(rdata, 0L, SEEK_END);
-      printf("nwarmup:  %d\n", nsamples);
-      nsamples = 0;
-    } if (strncmp(cbuf, "lp__", 4) == 0) {
-      // header line
-      int ntok = 1;
-      for (int i=0; i<BUFLEN; i++) {
-        if (cbuf[i] == ',') ntok++;
-        if (cbuf[i] == 0) break;
+      /*
+       * header line, count parameters, but skip 'treedepth__' and 'n_divergent__'
+       */
+
+      for (i=0, ntok=1; i<LBUFLEN; i++) {
+        if (lbuf[i] == ',') ntok++;
+        if (lbuf[i] == 0) break;
       }
       nparams = ntok - 2;
 
       printf("nparams:  %d\n", nparams);
 
+      // allocate buffers
       params = malloc(nparams*PARAMLEN);
       if (params == NULL) {
-        fprintf(stderr, "Memory allocation error.\n");
+        snprintf(cbuf, CBUFLEN,
+                 "Memory allocation error (params, %d bytes)", nparams*PARAMLEN);
+        perror(cbuf);
         return 2;
       }
 
       values = malloc(nparams*sizeof(float));
       if (values == NULL) {
-        fprintf(stderr, "Memory allocation error.\n");
+        snprintf(cbuf, CBUFLEN,
+                 "Memory allocation error (values, %ld bytes)", nparams*sizeof(float));
+        perror(cbuf);
         return 2;
       }
 
-      char *tok;
-      int i = 0;
-      for (tok = strtok(cbuf, ","), ntok = 0; tok != NULL; tok = strtok(NULL, ",\n"), ntok++) {
-        // skip treedepth__ and n_divergent__
+      // copy parameter names, skip 'treedepth__' and 'n_divergent__'
+      for (tok = strtok(lbuf, ","), ntok = 0, i = 0; tok != NULL; tok = strtok(NULL, ",\n"), ntok++) {
         if (! (ntok == 3 || ntok == 4)) {
           strncpy(params+i*PARAMLEN, tok, PARAMLEN-1);
           i++;
         }
       }
-    } else if (cbuf[0] != '#') {
-      // data line
-      int i = 0;
-      char *tok;
-      int ntok = 0;
-      for (tok = strtok(cbuf, ","); tok != NULL; tok = strtok(NULL, ","), ntok++) {
-        // skip treedepth__ and n_divergent__
+
+    } else if (strncmp(lbuf, "# Adapt", 7) == 0) {
+
+      /*
+       * end of warmup
+       */
+
+      nwarmup = nsamples;
+      nsamples = 0;
+
+      printf("nwarmup:  %d\n", nwarmup);
+
+    } else if (lbuf[0] != '#') {
+
+      /*
+       * parse sample and write, skip 'treedepth__' and 'n_divergent__'
+       */
+      for (tok = strtok(lbuf, ","), ntok = 0, i = 0; tok != NULL; tok = strtok(NULL, ","), ntok++) {
         if (! (ntok == 3 || ntok == 4)) {
           values[i++] = (float) atof(tok);
         }
@@ -118,23 +109,83 @@ int main(int argc, char *argv[])
         fwrite(values, sizeof(float), nparams, rdata);
         nsamples++;
       }
+
     }
   }
 
-  fseek(rdata, sizeof(int), SEEK_SET);
-  fwrite(&nsamples, sizeof(int), 1, rdata);
-  fwrite(&nparams, sizeof(int), 1, rdata);
-  fseek(rdata, 0L, SEEK_END);
-
   printf("nsamples: %d\n", nsamples);
 
-  for (int i=0; i<nparams; i++) {
+  /*
+   * write parameter names and dimensions
+   */
+
+  for (i=0; i<nparams; i++) {
     fwrite(params+i*PARAMLEN, sizeof(char), strlen(params+i*PARAMLEN)+1, rdata);
-    //    printf("param %d: '%s'\n", i, params+i*PARAMLEN);
   }
 
+  fseek(rdata, 0L, SEEK_SET);
+  fwrite(&nwarmup, sizeof(int), 1, rdata);
+  fwrite(&nsamples, sizeof(int), 1, rdata);
+  fwrite(&nparams, sizeof(int), 1, rdata);
+
+  free(values);
+  free(params);
+
+  return 0;
+}
+
+
+int main(int argc, char *argv[])
+{
+  char cbuf[CBUFLEN];
+  char *lbuf;
+  FILE *stan, *rdata;
+
+  if (argc != 2) {
+    printf("Usage: stan2bin STANOUTPUT\n");
+    return 1;
+  }
+
+  /*
+   * open stan and bin files
+   */
+
+  snprintf(cbuf, CBUFLEN, "%s.csv", argv[1]);
+  stan = fopen(cbuf, "r");
+  if (stan == NULL) {
+    snprintf(cbuf, CBUFLEN, "Error opening STAN file '%s.csv'", argv[1]);
+    perror(cbuf);
+    return 2;
+  }
+
+  snprintf(cbuf, CBUFLEN, "%s.bin", argv[1]);
+  rdata = fopen(cbuf, "wb");
+  if (rdata == NULL) {
+    snprintf(cbuf, CBUFLEN, "Error opening BIN file '%s.bin'", argv[1]);
+    perror(cbuf);
+    return 2;
+  }
+
+  /*
+   * allocate line buffer
+   */
+
+  lbuf = malloc(LBUFLEN);
+  if (lbuf == NULL) {
+    snprintf(cbuf, CBUFLEN, "Memory allocation error (line buffer, %d bytes)", LBUFLEN);
+    perror(cbuf);
+    return 3;
+  }
+
+  /*
+   * parse and tidy up
+   */
+
+  int r = stan2bin(stan, rdata, lbuf);
+
+  free(lbuf);
   fclose(stan);
   fclose(rdata);
 
-  return 0;
+  return r;
 }
