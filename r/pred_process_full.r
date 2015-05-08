@@ -7,6 +7,7 @@ library(fields)
 
 source('r/utils/pred_plot_funs.r')
 source('r/utils/pred_helper_funs.r')
+source('r/read_stanbin.r')
 
 # suff_dat = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_v0.3'
 # suff_fit = '12taxa_457cells_77knots_0to2000ypb_umwE_3by_od_mpp_full'
@@ -56,12 +57,17 @@ load(paste('r/dump/', suff_dat, '.rdata', sep=''))
 
 if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
 #   fname = sprintf('output/%s.csv', suff_fit)
-  fname = sprintf('output/%s.csv', suff_fit)
-  system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
-  fit = read_stan_csv(fname)
-  post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
-  save(post, file=paste0('output/', suff_fit,'.rdata'))
-  rm(fit)
+#   fname = sprintf('output/%s.csv', suff_fit)
+#   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
+#   fit = read_stan_csv(fname)
+#   post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
+#   save(post, file=paste0('output/', suff_fit,'.rdata'))
+#   rm(fit)
+  fname   = sprintf('output/%s.bin', suff_fit)
+  object  = read_stanbin(fname)
+  samples = cbind(x$samples[,5:ncol(x$samples)], x$samples[,1])
+  post = array(0, c(nrow(post), 1, ncol(post)))
+  post[,1,] = samples 
 } else {
   load(paste0('output/', suff_fit,'.rdata'))
 }

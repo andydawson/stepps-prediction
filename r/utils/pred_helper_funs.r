@@ -483,12 +483,14 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
   print("Done allocating")
   
   col_names  = colnames(post[,1,])
-  col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
+#   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
+#   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
+
+  ksi    = post[,1, which(par_names == 'ksi')]
   
-  ksi    = post[,1, which(col_substr == 'ksi')]
-  
-  alpha_s_start = min(which(col_substr == 'alpha_s'))
-  alpha_t_start = min(which(col_substr == 'alpha_t'))
+  alpha_s_start = min(which(par_names == 'alpha_s'))
+  alpha_t_start = min(which(par_names == 'alpha_t'))
    
 #   if (od){
 #     x = matrix(1, nrow=(N*T), ncol=1)
@@ -504,17 +506,17 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
   for (k in 1:W){
     print(k)
     
-    mu     = post[,1,which(col_substr == 'mu')[k]]
-    sigma  = post[,1,which(col_substr == 'sigma')[k]]
-    lambda = post[,1,which(col_substr == 'lambda')[k]]
+    mu     = post[,1,which(par_names == 'mu')[k]]
+    sigma  = post[,1,which(par_names == 'sigma')[k]]
+    lambda = post[,1,which(par_names == 'lambda')[k]]
     
     if (mu0){
       mut_cols = seq(k, (T-1)*W) 
     } else {
       mut_cols = seq(k, T*W, by=W)
     }
-    col_names[which(col_substr == 'mu_t')[mut_cols]]
-    mu_t = post[,1,which(col_substr == 'mu_t')[mut_cols]]
+    col_names[which(par_names == 'mu_t')[mut_cols]]
+    mu_t = post[,1,which(par_names == 'mu_t')[mut_cols]]
     
     alpha_s_cols = seq(alpha_s_start + k - 1, alpha_s_start + N_knots*W - 1, by=W)
     col_names[alpha_s_cols]
@@ -522,8 +524,8 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
     
     #     g    = array(NA, dim=c(N*T, W, niter))
     g_cols = seq(k, T*N*W, by=W)
-    col_names[which(col_substr == 'g')][g_cols]
-    g[,k,] = t(post[,1,which(col_substr == 'g')[g_cols]])
+    col_names[which(par_names == 'g')][g_cols]
+    g[,k,] = t(post[,1,which(par_names == 'g')[g_cols]])
 
     C_s <- exp(-d_knots/rho[k])
     c_s <- exp(-d_inter/rho[k])
@@ -852,6 +854,7 @@ build_weight_matrix <- function(post, d, idx_cores, N, N_cores, run){
     if (one_b){
       #       b = rep(mean(post[,1,which(par_names == 'b')]), K)
       b = mean(post[,1,which(par_names == 'b')])
+      if (KW) b = rep(b, K)
     } else {
       KW = TRUE
       b  = colMeans(post[,1,which(par_names == 'b')])
@@ -861,6 +864,7 @@ build_weight_matrix <- function(post, d, idx_cores, N, N_cores, run){
   if (KW){
     w = array(0, c(K, N_cores, N))
     for (k in 1:K){
+      print(paste0('k = ', k))
       for (i in 1:N_cores){
         for (j in 1:N){ 
           if (j != idx_cores[i]){
@@ -946,12 +950,14 @@ build_sumw_pot <- function(post, K, N_pot, d_pot, run){
     if (one_b){
 #       b = rep(mean(post[,1,which(par_names == 'b')]), K)
       b = mean(post[,1,which(par_names == 'b')])
+      if (KW) b = rep(b, K)
     } else {
       KW = TRUE
       b = colMeans(post[,1,which(par_names == 'b')])
     }
 
     if (KW){
+      sum_w = rep(NA, K)
       for (k in 1:K)
         sum_w[k] = sum( d_pot[,2] * (b[k]-1) * (b[k]-2) / (2 * pi * a[k]  * a[k]) * (1 + d_pot[,1] / a[k])^(-b[k]) )
     } else {
