@@ -70,7 +70,7 @@ if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
   samples = data.frame(object$samples[,5:ncol(object$samples)], object$samples[,1])
 #   colnames(samples) = colnames(object$samples cbind(colnames(object$samples[,5:ncol(object$samples)]), name(object$samples[,1])))
   post = array(0, c(nrow(samples), 1, ncol(samples)))   
-  post[,1,] = samples 
+  post[,1,] = as.matrix(samples) 
   dimnames(post)[[3]] = colnames(samples)
 } else {
   load(paste0('output/', suff_fit,'.rdata'))
