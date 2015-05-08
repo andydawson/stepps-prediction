@@ -65,7 +65,7 @@ if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
 #   rm(fit)
   fname   = sprintf('output/%s.bin', suff_fit)
   object  = read_stanbin(fname)
-  samples = cbind(x$samples[,5:ncol(x$samples)], x$samples[,1])
+  samples = cbind(object$samples[,5:ncol(object$samples)], object$samples[,1])
   post = array(0, c(nrow(post), 1, ncol(post)))
   post[,1,] = samples 
 } else {
