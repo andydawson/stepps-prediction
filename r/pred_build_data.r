@@ -19,7 +19,7 @@ decomp     = TRUE
 bt         = TRUE
 mpp        = TRUE
 
-veg_knots  = TRUE
+veg_knots  = FALSE
 
 save_plots = TRUE
 
@@ -450,7 +450,7 @@ rho = unname(mean_pars[which(names_substr == 'rho')])[1:W]
 ##########################################################################################################################
 if (kernel == 'gaussian'){ suff = paste0('G_', suff) } else if (kernel == 'pl'){suff = paste0('PL_', suff)}
 if (KGAMMA) suff = paste0('KGAMMA_', suff)
-if (KW) suff = paste0('KW', suff)
+if (KW) suff = paste0('KW_', suff)
 
 dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
        'gamma', 'psi', 'phi', 'rho', 'eta',
@@ -459,7 +459,7 @@ dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
        'd', 'd_knots', 'd_inter', 'w',
        'lag',
        #        'P', 'N_p', 'sum_w_pot'),
-       'sum_w_pot', 'pollen_check'),
+       'sum_w_pot'),#, 'pollen_check'),
      #        'knot_coords',
      #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
      file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))

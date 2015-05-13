@@ -894,17 +894,19 @@ namespace pred_model_namespace {
 
       fill(gradient.begin(), gradient.end(), 0.0);
 
+      double inv_ksi1 = 1.0 / ksi;
+      double inv_ksi2 = 1.0 / (ksi * ksi);
+      double inv_ksi3 = 1.0 / (ksi * ksi * ksi);
+
       for (int k=0; k<W; ++k){
-	gradient[0] += -1 / ksi + pow(mu_t[k][0], 2) / ( ksi * ksi * ksi);
+	gradient[0] += -inv_ksi1 + inv_ksi3 * pow(mu_t[k][0], 2);
 	for (int t=1; t<T-1; ++t)
-	  gradient[0] += -1 / ksi + pow(mu_t[k][t] - mu_t[k][t-1], 2) / ( ksi * ksi * ksi);
+	  gradient[0] += -inv_ksi1 + inv_ksi3 * pow(mu_t[k][t] - mu_t[k][t-1], 2);
       }
 
       gradient[0] = gradient[0] * ksi_ja + ksi_dj;
 
       // partial of mu_t normal
-
-      double inv_ksi2 = 1.0 / (ksi * ksi);
 
       #pragma omp parallel for
       for (int k=0; k<W; ++k) {
@@ -944,9 +946,11 @@ namespace pred_model_namespace {
 	gradient[1 + k] += -N_knots / sigma[k];
 	gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_first;
 
-	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix() / (lambda[k] * lambda[k]);
-	gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
-	gradient[1 + W + k] += 0.5 / sigma2[k] * alpha_t[k*(T-1)].transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * alpha_t[k*(T-1)];
+
+	double inv_lambda2 =  1.0 / (lambda[k] * lambda[k]);
+	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix();
+	gradient[1 + W + k] += - 0.5 * inv_lambda2 * (Q_s_inv[k] * dQdlamk).trace();
+	gradient[1 + W + k] += 0.5 / sigma2[k] * inv_lambda2 * alpha_t[k*(T-1)].transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * alpha_t[k*(T-1)];
 
 	for (int t=1; t<(T-1); ++t){
 
@@ -956,8 +960,8 @@ namespace pred_model_namespace {
 	  gradient[1 + k] += -N_knots / sigma[k];
 	  gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_full;
 
-	  gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
-	  gradient[1 + W + k] += 0.5 / sigma2[k] *  (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
+	  gradient[1 + W + k] += - 0.5 * inv_lambda2 * (Q_s_inv[k] * dQdlamk).trace();
+	  gradient[1 + W + k] += 0.5 / sigma2[k] * inv_lambda2 * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
 	}
 
 	timer_mvn.toc(k);
@@ -979,7 +983,6 @@ namespace pred_model_namespace {
 	dBdlam *= sigma2[k] * lambda_inv[k] * lambda_inv[k];
 
 	matrix_d dqdlamk = (q_s[k].array() * d_inter.array()).matrix();
-	dQdlamk = (Q_s[k].array() * d_knots.array()).matrix(); // use as above (so fix denom)
 
 	for (int t=0; t<T; ++t){
 
@@ -1022,7 +1025,10 @@ namespace pred_model_namespace {
           } // n
       	} // t
 
+	// sigma jacobian adsjustments
 	gradient[1 + k] = gradient[1 + k] * sigma_ja[k] + sigma_dj[k];
+	
+	// lamdba jacobian adsjustments
 	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
 
 	// partial of MVN for alpha_t (wrt alpha_t)

@@ -968,9 +968,11 @@ public:
       for (int k=0; k<W; ++k){
 	gradient[0] += -1 / ksi + pow(mu_t[k][0], 2) / ( ksi * ksi * ksi); 
 	for (int t=1; t<T-1; ++t)
+	  // mu_t wrt ksi
 	  gradient[0] += -1 / ksi + pow(mu_t[k][t] - mu_t[k][t-1], 2) / ( ksi * ksi * ksi); 
       }
 
+      // ksi jacobian adjustment
       gradient[0] = gradient[0] * ksi_ja + ksi_dj;
 
       // partial of mu_t normal
@@ -990,7 +992,7 @@ public:
 	gradient[1 + 3*W + k*(T-1)] += - mu_t[k][0] / ( ksi * ksi );
 	gradient[1 + 3*W + k*(T-1)] += (mu_t[k][1] - mu_t[k][0]) / ( ksi * ksi );
 
-	// partial of g (wrt mu_t)
+	// partial of g wrt mu_t
       	for (int n=0; n<N; ++n){
       	  for (int t=0; t<T-1; ++t){
       	    double idx = n*T + t+1;
@@ -1005,19 +1007,21 @@ public:
 	  gradient[idx_alpha_s] -= tmp[v];
 	}
 
-	// partial of MVN for alpha_t WRT sigma
-
 	timer_mvn.tic(k);
 
 	double alpha_Qinv_alpha_first;
 	alpha_Qinv_alpha_first = (alpha_t[k*(T-1)]).transpose() * Q_s_inv[k] * alpha_t[k*(T-1)];
-
+	
+	// alpha_t wrt sigma 
 	gradient[1 + k] += -N_knots / sigma[k];
 	gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_first;
 
-	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix() / (lambda[k] * lambda[k]);
-	gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
-	gradient[1 + W + k] += 0.5 / sigma2[k] * alpha_t[k*(T-1)].transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * alpha_t[k*(T-1)];
+	matrix_d dQdlamk = (Q_s[k].array() * d_knots.array()).matrix() ;/// (lambda[k] * lambda[k]);
+	double lambda2inv = 1 / lambda[k] / lambda[k] ;
+	
+	// alpha_t wrt lambda
+	gradient[1 + W + k] += - 0.5 * lambda2inv * (Q_s_inv[k] * dQdlamk).trace();
+	gradient[1 + W + k] += 0.5 / sigma2[k] * lambda2inv * alpha_t[k*(T-1)].transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * alpha_t[k*(T-1)];
 	
 	for (int t=1; t<(T-1); ++t){
 
@@ -1027,8 +1031,8 @@ public:
 	  gradient[1 + k] += -N_knots / sigma[k];
 	  gradient[1 + k] += 1 / (sigma[k] * sigma2[k]) * alpha_Qinv_alpha_full;
 
-	  gradient[1 + W + k] += - 0.5 * (Q_s_inv[k] * dQdlamk).trace();
-	  gradient[1 + W + k] += 0.5 / sigma2[k] *  (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
+	  gradient[1 + W + k] += - 0.5 * lambda2inv * (Q_s_inv[k] * dQdlamk).trace();
+	  gradient[1 + W + k] += 0.5 / sigma2[k] * lambda2inv * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]).transpose() * Q_s_inv[k] * dQdlamk * Q_s_inv[k] * (alpha_t[k*(T-1)+t] - alpha_t[k*(T-1)+t-1]);
 	}
 
 	timer_mvn.toc(k);
@@ -1040,7 +1044,7 @@ public:
 	timer_gnormal.tic(k);
 
 	matrix_d dqdlamk = (q_s[k].array() * d_inter.array()).matrix();
-	dQdlamk = (Q_s[k].array() * d_knots.array()).matrix(); // use as above (so fix denom)
+	//dQdlamk = (Q_s[k].array() * d_knots.array()).matrix(); // use as above (so fix denom)
 
 	for (int t=0; t<T; ++t){
 	  for (int n=0; n<N; ++n){
@@ -1053,18 +1057,17 @@ public:
 
 	    int idx_g        = 1 + W*3 + W*(T-1) + W*N_knots + W*(T-1)*N_knots + k*N*T + n*T + t;
 	    
-	    // uncomment these to add g
-	    // wrt g
+	    // g wrt g
 	    gradient[idx_g] -= AoverB;
 
-	    // wrt sigma
+	    // g wrt sigma
 	    if (t > 0){
 	      gradient[1 + k] += (- 1 / B + AoverB * AoverB ) * sigma[k] * (1 - qvar[k][n]);
 	    }
 
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_s  = 1 + W*3 + W*(T-1) +  k*N_knots + v; 
-	      // wrt alph_s
+	      // g wrt alph_s
 	      //gradient[idx_alpha_s] += AoverB * H_s[k](n,v);
 	      gradient[idx_alpha_s] += AoverB * M_H_s[k](n,v);
 	    }
@@ -1074,6 +1077,7 @@ public:
 
 	timer_gnormal.toc(k);
 
+	// sigma jacobian adjustments
 	gradient[1 + k] = gradient[1 + k] * sigma_ja[k] + sigma_dj[k];
 
 	// partials of g normal
@@ -1109,27 +1113,34 @@ public:
 	    double B      = var_g[k][n*T+t+1];
 	    double AoverB = A/B;
 
-	    // // uncomment these lines for lambda grad
+	    // lambda
 	    gradient[1 + W + k] -= AoverB * dAdlam[n];
 	    gradient[1 + W + k] += 0.5 * ( - 1 / B + AoverB * AoverB ) * dBdlam(n,n);
-	   
-      	  } // t
-      	} // n
-	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
-
-      	for (int n=0; n<N; ++n){
-      	  for (int t=0; t<(T-1); ++t){
-
-	    double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
-	    double B      = var_g[k][n*T+t+1];
-	    double AoverB = A/B;
 
 	    for (int v=0; v<N_knots; ++v){
 	      int idx_alpha_t = 1 + W*3 + W*(T-1) + W*N_knots + (k*(T-1) + t)*N_knots + v;
 	      gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
 	    }
-      	  } // n
-      	} // t
+	   
+      	  } // t
+      	} // n
+	
+	// lambda jacobian adjustments
+	gradient[1 + W + k] = gradient[1 + W + k] * lambda_ja[k] + lambda_dj[k];
+
+      	// for (int n=0; n<N; ++n){
+      	//   for (int t=0; t<(T-1); ++t){
+
+	//     double A      = g[k][n*T+t+1] - mu_g[k][n*T+t+1];
+	//     double B      = var_g[k][n*T+t+1];
+	//     double AoverB = A/B;
+
+	//     for (int v=0; v<N_knots; ++v){
+	//       int idx_alpha_t = 1 + W*3 + W*(T-1) + W*N_knots + (k*(T-1) + t)*N_knots + v;
+	//       gradient[idx_alpha_t] += AoverB * H_t[k](n,v);
+	//     }
+      	//   } // n
+      	// } // t
 
 	timer_gnormal.toc(k);
 
