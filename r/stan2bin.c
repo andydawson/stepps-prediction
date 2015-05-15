@@ -9,6 +9,7 @@
  * parameters - char, nparams: parameter names (null terminated C strings)
  */
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -95,7 +96,7 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
 
       printf("nwarmup:  %d\n", nwarmup);
 
-    } else if (lbuf[0] != '#') {
+    } else if ((lbuf[0] != '#') && isgraph(lbuf[0])) {
 
       /*
        * parse sample and write, skip 'treedepth__' and 'n_divergent__'
