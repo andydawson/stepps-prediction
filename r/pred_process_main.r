@@ -10,7 +10,7 @@
 G  = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3', 
           suff_fit = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by')
 
-runs = list(PL, G)
+runs = list(G)
 
 for (run in runs){
   suff_dat = run$suff_dat
