@@ -121,7 +121,7 @@ process_out = build_r(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)
 
 # mu_g   = process_out$mu_g
 r_pred = process_out$r
-# g      = process_out$g
+g      = process_out$g
 # Halpha_t = process_out$Halpha_t
 # Halpha_s = process_out$Halpha_s
 # rm(process_out)
