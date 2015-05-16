@@ -27,6 +27,7 @@ qsub = """\
 #SBATCH -c {threads}
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=andria.dawson@gmail.com
+#SBATCH --nodelist=scf-sm[21-23]
 
 cd $HOME/Documents/projects/stepps-prediction/cpp
 export OMP_NUM_THREADS={threads}
