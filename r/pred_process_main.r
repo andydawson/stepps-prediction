@@ -6,11 +6,17 @@
 
 # PL = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3',
 #           suff_fit = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by')
+# 
+# G  = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3', 
+#           suff_fit = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by')
 
-G  = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3', 
-          suff_fit = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by')
+PL = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_COPY_PL_umw_3by_v0.3',
+          suff_fit = '12taxa_699cells_120knots_0to2000ypb_COPY_PL_umw_3by_v0.3_tmp')
 
-runs = list(G)
+G  = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_COPY_G_umw_3by_v0.3', 
+          suff_fit = '12taxa_699cells_120knots_0to2000ypb_COPY_G_umw_3by_v0.3_tmp')
+
+runs = list(PL, G)
 
 for (run in runs){
   suff_dat = run$suff_dat
