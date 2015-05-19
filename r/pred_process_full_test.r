@@ -78,7 +78,7 @@ adj_t = adj$adj_t
 ####################################################################################################
 # process_out = build_props_full(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)
 process_out = build_r(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)
-save(process_out, file=paste0(subDir, 'process_out.rdata'))
+save(process_out, file=paste0(subDir, '/process_out.rdata'))
 # rm(post)
 
 # r_pred = process_out$r
@@ -92,7 +92,7 @@ mu_g     = process_mean$mu_g
 Halpha_t = process_mean$Halpha_t
 Halpha_s = process_mean$Halpha_s
 
-save(process_mean, file=paste0(subDir, 'process_mean.rdata'))
+save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
 
 # niter = dim(post[,1,])[1]
 # mean_Halpha_t = array(NA, dim=c(W, T-1, niter))
