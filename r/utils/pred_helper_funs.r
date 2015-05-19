@@ -629,16 +629,16 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
   alpha_s_start = min(which(par_names == 'alpha_s'))
   alpha_t_start = min(which(par_names == 'alpha_t'))
   
-    if (od){
-      x = matrix(1, nrow=(N*T), ncol=1)
-      N_p = N*T
+  if (od){
+    x = matrix(1, nrow=N, ncol=1)
+    N_p = N*T
       
-      temp = qr(x)
-      Q = qr.Q(temp)
-      #     R = qr.R(temp)
+    temp = qr(x)
+    Q = qr.Q(temp)
+    #     R = qr.R(temp)
       
-      P = Q %*% t(Q)
-    }
+    P = Q %*% t(Q)
+  }
   
   for (k in 1:W){
     print(k)
