@@ -10,11 +10,11 @@
 # G  = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3', 
 #           suff_fit = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by')
 
-PL = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_COPY_PL_umw_3by_v0.3',
-          suff_fit = '12taxa_699cells_120knots_0to2000ypb_COPY_PL_umw_3by_v0.3_tmp')
+PL = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_KW_KGAMMA_PL_umw_3by_v0.3',
+          suff_fit = '12taxa_699cells_120knots_0to2000ypb_KW_KGAMMA_PL_umw_3by_v2_tmp')
 
-G  = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_COPY_G_umw_3by_v0.3', 
-          suff_fit = '12taxa_699cells_120knots_0to2000ypb_COPY_G_umw_3by_v0.3_tmp')
+G  = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_KW_KGAMMA_G_umw_3by_v0.3', 
+          suff_fit = '12taxa_699cells_120knots_0to2000ypb_KW_KGAMMA_G_umw_3by_v2_tmp')
 
 runs = list(PL, G)
 
