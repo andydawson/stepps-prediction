@@ -704,8 +704,9 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
   }
   
   mu_t = get_mut(post, W)
+  mu   = get_mu(post, W)
   
-  return(list(mu_g=mu_g, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
+  return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
 
@@ -888,13 +889,15 @@ get_corrections <- function(post, rho, eta, T, K, d_inter, d_knots){
 
 
 get_mut <- function(post, W){
-
+  
+  niter   = dim(post[,1,])[1] 
+  
   col_names = colnames(post[,1,])
   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
   
   idx_mut = which(par_names == 'mu_t')
   
-  mu_t = array(NA, c(T-1, W, niters))
+  mu_t = array(NA, c(T-1, W, niter))
   
   for (k in 1:W){
     print(k)
@@ -907,13 +910,13 @@ get_mut <- function(post, W){
 }
 
 get_mu <- function(post, W){
-  #   W = K-1
-  n    = dim(post)[3]
-  idx_pars = seq(1+2*W+1, 1+3*W)
   
-  mu = array(NA, c(W, niter))
+  col_names = colnames(post[,1,])
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
   
-  mu = t(post[,1,idx_pars])
+  idx_mu = which(par_names == 'mu')
+  
+  mu = t(post[,1,idx_mu])
   
   return(mu)
 }
