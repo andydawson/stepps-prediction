@@ -88,9 +88,9 @@ save(process_out, file=paste0(subDir, '/process_out.rdata'))
 
 process_mean = build_mu_g(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res)
 
-mu_g     = process_mean$mu_g
-Halpha_t = process_mean$Halpha_t
-Halpha_s = process_mean$Halpha_s
+# mu_g     = process_mean$mu_g
+# Halpha_t = process_mean$Halpha_t
+# Halpha_s = process_mean$Halpha_s
 
 save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
 

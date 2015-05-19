@@ -606,7 +606,7 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
   niter   = dim(post[,1,])[1] 
   W       = K-1
   
-  ones     = matrix(1, nrow=N*T, ncol=1)
+  ones     = matrix(1, nrow=N, ncol=1)
   mu_g     = array(NA, dim=c(N*T, W, niter))
   Halpha_s = array(NA, dim=c(N, W, niter))
   
@@ -629,12 +629,9 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
   alpha_s_start = min(which(par_names == 'alpha_s'))
   alpha_t_start = min(which(par_names == 'alpha_t'))
   
-  if (od){
-    x = matrix(1, nrow=N, ncol=1)
-    N_p = N*T
-      
-    temp = qr(x)
-    Q = qr.Q(temp)
+  if (od) {
+    temp = qr(ones)
+    Q    = qr.Q(temp)
     #     R = qr.R(temp)
       
     P = Q %*% t(Q)
@@ -706,7 +703,9 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
     }
   }
   
-  return(list(mu_g=mu_g, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
+  mu_t = get_mut(post, W)
+  
+  return(list(mu_g=mu_g, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
 
@@ -888,18 +887,19 @@ get_corrections <- function(post, rho, eta, T, K, d_inter, d_knots){
 }
 
 
-get_mut <- function(post, N_pars, W){
-#   W = K-1
-  niters   = dim(post[,1,])[1]
-  #idx_pars = seq(3+N_pars+1, 3+N_pars+W*T)
-  idx_pars = seq(N_pars+1, N_pars+W*(T-1))
+get_mut <- function(post, W){
 
+  col_names = colnames(post[,1,])
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
+  
+  idx_mut = which(par_names == 'mu_t')
+  
   mu_t = array(NA, c(T-1, W, niters))
   
   for (k in 1:W){
     print(k)
     idx_taxon = seq(k, W*(T-1), by=W)
-    idx = idx_pars[idx_taxon]
+    idx = idx_mut[idx_taxon]
     colnames(post[,1,])[idx]
     mu_t[,k,] = t(post[,1,idx])
   }
