@@ -893,7 +893,7 @@ get_mut <- function(post, W){
   niter   = dim(post[,1,])[1] 
   
   col_names = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))
   
   idx_mut = which(par_names == 'mu_t')
   
@@ -912,7 +912,7 @@ get_mut <- function(post, W){
 get_mu <- function(post, W){
   
   col_names = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))
   
   idx_mu = which(par_names == 'mu')
   
@@ -1173,7 +1173,7 @@ build_sumw_pot <- function(post, K, N_pot, d_pot, run){
   kernel = run$kernel
   
   col_names = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))
   
   if (kernel=='gaussian'){
     one_psi = run$one_psi
