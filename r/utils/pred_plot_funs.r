@@ -285,7 +285,9 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
   if (!is.na(thresh)){
     prop_dat$props[which(prop_dat$props > thresh)] = thresh
   }
-  
+
+  print('debug2')
+
   p <- ggplot() + geom_tile(data=prop_dat, aes(x=x, y=y, fill=props)) + 
     scale_fill_gradientn(colours=tim.colors(), name=bar_title) + coord_fixed() #+
     #scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
@@ -357,7 +359,7 @@ pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N, K, T
   Sys.sleep(2)
   if (save_plots){
     ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
-    ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.eps', sep=''), scale=1, width=12, height=12)
+#     ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.eps', sep=''), scale=1, width=12, height=12)
     #     dev.off()
   }
   return(p)

@@ -450,18 +450,7 @@ if (kernel == 'gaussian'){ suff = paste0('G_', suff) } else if (kernel == 'pl'){
 if (KGAMMA) suff = paste0('KGAMMA_', suff)
 if (KW) suff = paste0('KW_', suff)
 
-dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
-       'gamma', 'psi', 'phi', 'rho', 'eta',
-       'y', 
-       'idx_cores', 
-       'd', 'd_knots', 'd_inter', 'w',
-       'lag',
-       #        'P', 'N_p', 'sum_w_pot'),
-       'sum_w_pot'),#, 'pollen_check'),
-     #        'knot_coords',
-     #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
-     file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
-
+# note that w is column-major 
 save(K, N, T, N_cores, N_knots, res,
      gamma, psi, phi, rho, eta,
      y, 
@@ -473,6 +462,26 @@ save(K, N, T, N_cores, N_knots, res,
      knot_coords,
      centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
      file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
+
+# convert to row-major
+if (KW){
+  w_new = vector(length=0)
+  for (k in 1:K)
+    w_new = c(w_new, as.vector(w[k,,]))
+  w = array(w_new, c(K, N_cores, N))  
+}
+
+dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
+       'gamma', 'psi', 'phi', 'rho', 'eta',
+       'y', 
+       'idx_cores', 
+       'd', 'd_knots', 'd_inter', 'w',
+       'lag',
+       #        'P', 'N_p', 'sum_w_pot'),
+       'sum_w_pot'),#, 'pollen_check'),
+     #        'knot_coords',
+     #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
+     file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
 
 ##########################################################################################################################
 ## if base model copy gamma and w
