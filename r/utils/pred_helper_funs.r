@@ -240,6 +240,23 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
+# write mean vals to file
+write_par_vals <- function(post_dat, taxa, subDir, N_pars){
+  
+  post      = post_dat$post
+  par_names = post_dat$par_names
+  
+  # sink(sprintf('%s/%s/summary.txt', wd, path_figs1), type='output')
+  sink(sprintf('%s/summary.txt', subDir), type='output')
+  print('The taxa modelled are:')
+  taxa
+  cat('\n')
+  print('Summary of posterior parameter vals:')
+  get_quants(post, N_pars)
+  sink()
+  
+  return()
+}
 
 build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
   
@@ -1430,10 +1447,12 @@ split_mi <- function(meta){
 
 get_quants <- function(post, npars){
   
-  col_names  = colnames(post[,1,])
+#   col_names  = colnames(post[,1,])
 #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
   
   quants <- colMeans(post[,1,1:npars])
+  
+  quants <- apply(post[,1,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975))
   
 #   quants <- cbind(summary(fit)$summary[,'mean'][1:npars],
 #                   summary(fit)$summary[,'2.5%'][1:(npars)],
