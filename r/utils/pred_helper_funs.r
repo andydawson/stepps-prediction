@@ -182,7 +182,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
     mu_t = post[,1,which(par_names == 'mu_t')[mut_cols]]
     
     alpha_s_cols = seq(alpha_s_start + k - 1, alpha_s_start + N_knots*W - 1, by=W)
-    col_names[alpha_s_cols]
+#     col_names[alpha_s_cols]
     alpha_s = post[,1,alpha_s_cols]
     
     C_s <- exp(-d_knots/rho[k])
@@ -219,7 +219,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
       for (t in 2:T){
         
         alpha_t_cols = seq(alpha_t_start + (k-1)*(T-1) + t-1 - 1, alpha_t_start + N_knots*W*(T-1) - 1, by=W*(T-1))
-        col_names[alpha_t_cols]
+#         col_names[alpha_t_cols]
         alpha_t = post[,1,alpha_t_cols]
         
         mu_g_idx = seq(t, N*T, by=T)
