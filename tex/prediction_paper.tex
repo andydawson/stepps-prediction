@@ -1,0 +1,150 @@
+\documentclass[12pt]{article}
+
+% This first part of the file is called the PREAMBLE. It includes
+% customizations and command definitions. The preamble is everything
+% between \documentclass and \begin{document}.
+
+\usepackage[margin=1in]{geometry}  % set the margins to 1in on all sides
+\usepackage{graphicx}              % to include figures
+\usepackage{amsmath, bm}               % great math stuff
+\usepackage{amsfonts}              % for blackboard bold, etc
+\usepackage{amsthm}                % better theorem environments
+
+
+%%various theorems, numbered by section
+
+%\newtheorem{thm}{Theorem}[section]
+%\newtheorem{lem}[thm]{Lemma}
+%\newtheorem{prop}[thm]{Proposition}
+%\newtheorem{cor}[thm]{Corollary}
+%\newtheorem{conj}[thm]{Conjecture}
+
+%\DeclareMathOperator{\id}{id}
+
+%\newcommand{\bd}[1]{\mathbf{#1}} for bolding symbols
+%\newcommand{\RR}{\mathbb{R}} for Real numbers
+%\newcommand{\ZZ}{\mathbb{Z}} for Integers
+%\newcommand{\col}[1]{\left[\begin{matrix} #1 \end{matrix} \right]}
+%\newcommand{\comb}[2]{\binom{#1^2 + #2^2}{#1+#2}}
+
+\newcommand{\kron}{\raisebox{1pt}{\ensuremath{\:\otimes\:}}} 
+\newcommand{\lgamma}{\text{lgamma}} 
+\newcommand{\digamma}{\text{digamma}} 
+
+\begin{document}
+
+
+\nocite{*}
+
+\title{Prediction model for vegetation composition using pollen proxy data for the Upper Midwest}
+
+\author{Andria Dawson}
+
+\maketitle
+
+\section{Introduction}
+
+XXX:...
+
+
+\section{Data}
+
+XXX:...
+
+\subsection{Calibration}
+
+XXX:...
+
+\subsection{Prediction}
+
+XXX:...
+
+\section{Methods}
+
+XXX:...
+
+\subsection{Calibration model}
+
+XXX:...
+
+% log posterior
+\subsection{Prediction model}
+
+The sedimentary pollen counts at pond $i$ for time $t$ for taxon $p$ are denoted by $y_{i,t,k}$. These counts are modelled using a dirichlet multinomial distribution according to
+\begin{align*}
+ \bm{y}_{i,t,\cdot} \sim \text{DM} ( n_{i,t}, \alpha_{i,t} )
+\end{align*}
+where $n_{i,t} = \sum_{p=1}^{K} y_{i,t,p}$ and the precision parameter alpha is the sum of the local and non-local contributions
+\begin{align*}
+\alpha_{i,t} = \sum_{k=1}^{K} \gamma \phi_k r_{s(i),t,k} + \frac{1}{C} (1- \gamma) \phi_k \sum_{s_k \neq s(i)} r_{s(i),t,k} w(s(i), s_k).
+\end{align*}
+
+The proportional vegetation $r_{s,t,k}$ is linked to the underlying corresponding spatial process $g_{s,t,\cdot}$ through an additive log-ratio sum-to-one constraint
+\begin{align*}
+r_{s,t,k} = \frac{ \text{exp}(g_{s,t,k}) }{ \sum_{k=1}^K \exp (g_{s,t,k}) }.
+\end{align*} 
+
+The underlying smooth spatial process $g$ is normally distributed
+according to
+\begin{align*} g_{s,t,k} \sim \text{Normal} ( \mu_{s,t,k}^g , (\sigma_{s,t,k})^2 )
+\end{align*}
+where the process mean is determined by the sum of an overall mean, a time-varying mean, a space-varying (time-invariant) mean, and a term describing the spatial innovations between consecutive years. More formally, we have that
+\begin{align*}
+  \mu_{s,t,k}^g = \mu_k + \mu_{t,k}^t + \nu_{s,k}^s + \nu_{s,t,k}^t.
+\end{align*}
+
+The time-varying mean is given by the first order autoregressive model
+\begin{align*}
+\mu^t_{t,k} &\sim \text{Normal}(mu^t_{t-1,k}, \xi^2), \\
+\mu^t_{0,k} &\sim \text{Normal}(0, 20^2).
+\end{align*}
+
+Both the spatial-varying mean and the spatial innovations must be determined for each cell in the domain. Due to the inherent complex dependence structure of the model, the size of the domain, and computational limitations, we make use of the modified predictive process. The modified predictive process provides us with a method to model spatial processes on a subdomain of knots $\bm{s^*}$ containing fewer spatial points than the original domain, and to then scale these results from knots in the subdomain back up to the cells in the desired domain. 
+
+Making use of the modified predictive process, the spatial-varying time invariant mean becomes
+\begin{align*}
+\bm{\nu}_{\cdot, p}^s = \bm{H}_p^s \bm{\alpha}_{p}^s
+\end{align*}
+where the process is modelled according to
+\begin{align*}
+\bm{\alpha}^s_{k} \sim \text{MultivariateNormal}(0, C(\bm{s^{*}}; \eta_k, \rho_k)) 
+\end{align*}
+with the isotropic exponential covariance function $C(s*; \eta_k, \rho_k) = \eta_k^2 \exp(-d(\bm{s^*})/\rho_k )$ where $d(\bm{s^*})$ is the $N_{\text{knots}} \times N_{\text{knots}}$ matrix of distances between all knots in the subdomain. We can therefore scale from knots to cells by left-multiplying the process on the subdomain with
+\begin{align*}
+H^s_{\cdot,k} = c(\bm{s}, \bm{s^*}; \eta_k, \rho_k) C^{*-1}(\bm{s^*}; \eta_k, \rho_k)
+\end{align*}
+where $c(\bm{s}, \bm{s^*}; \rho_k) = \eta_k^2 \exp( -d(\bm{s}, \bm{s^*}) / \rho_k)$. Covariance parameters $\eta_k$ and $\rho_k$ are determined by fitting a modified predictive process model to the settlement-era composition data.
+
+Again, making use of the predictive process, the innovations that result from looking at the differences
+in consecutive years are given by
+\begin{align*}
+\bm{\nu}_{\cdot, t, k}^t = \bm{H}_k^t \bm{\alpha}_{t,k}^t.
+\end{align*}
+The innovations are modelled according to
+\begin{align*}
+\bm{\alpha}^t_{t,k} \sim \text{MultivariateNormal}(\bm{\alpha}^t_{t-1,k}, Q(\bm{s^*}; \sigma^2, \lambda_k))
+\end{align*}
+where $Q$ is again an exponential covariance function determined by
+parameters $\sigma_k$ and $\lambda_k$. The matrix that allows us to
+scale from knots to cells is given by
+\begin{align*}
+H^t_{t,k} =  q(\bm{s}, \bm{s^*}; \sigma_k, \lambda_k) Q^{*-1}(\bm{s^*}; \sigma_k, \lambda_k)
+\end{align*}
+where $q(\bm{s}, \bm{s^*}; \sigma_k, \lambda_k) = \sigma_k^2 \exp( -d(\bm{s},\bm{s^*}) / \lambda_k)$.
+
+The process variance term $\sigma^g_{s,t,k}$ is composed of two
+correction terms, one for each of the predictive processes that we use
+to model the spatially-varying mean and the time varying
+innovations. We have that
+\begin{align*}
+\sigma^g_{s,t,k} &= \eta_k^2 - \eta_k^2 (c(s, \cdot) \, C^{*-1} \, c(s, \cdot)')_{s} \, , \, \text{t=1} \\
+\sigma^g_{s,t,k} &= \eta_k^2 - \eta_k^2 (c(s, \cdot) \, C^{*-1} \, c(s, \cdot)')_{s} + \sigma_k^2 - \sigma_k^2(q(s, \cdot) \,  Q^{*-1} \, q(s, \cdot)')_{s} \, , \, t > 1 \\
+\end{align*}
+
+\section{Results}
+
+\section{Discussion}
+
+
+
+\end{document}
