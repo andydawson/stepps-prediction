@@ -255,7 +255,6 @@ write_par_vals <- function(post_dat, taxa, subDir, N_pars){
   get_quants(post, N_pars)
   sink()
   
-  return()
 }
 
 build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
