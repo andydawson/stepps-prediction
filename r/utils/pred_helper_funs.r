@@ -39,6 +39,24 @@ return r;
   }
 ', verbose=TRUE)
 
+load_stan_output <- function(suff_fit){
+  # if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
+  fname     = sprintf('output/%s.bin', suff_fit)
+  object    = read_stanbin(fname) 
+  samples   = data.frame(object$samples[,5:ncol(object$samples)], object$samples[,1])
+  post      = array(0, c(nrow(samples), 1, ncol(samples)))   
+  post[,1,] = as.matrix(samples) 
+  dimnames(post)[[3]] = colnames(samples)
+  
+  #   save(post, file=paste0('output/', suff_fit,'.rdata'))
+  # } else {
+  #   load(paste0('output/', suff_fit,'.rdata'))
+  # }
+  
+  return(post)
+}
+
+
 build_props <- function(post, rho, eta, tau, mu, alpha, N_knots, T, K, N_pars, mpp){
   
   #if (length(eta == 1)){eta = rep(eta, W)}
