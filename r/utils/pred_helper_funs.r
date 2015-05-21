@@ -39,20 +39,20 @@ return r;
   }
 ', verbose=TRUE)
 
-# matrix vector mult
-cppFunction('
-  NumericMatrix mat_vec_mult(int N, int N_knots, NumericMatrix H, NumericVector alpha) {
-    //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
-    NumericVector Halpha(N);
-    
-    for (int i = 0; i<N; i++)
-        Halpha(i) = 0;
-      for (int j = 0; j<N_knots; j++)
-        Halpha(i) += H(i,j) * alpha(j);    
-
-return Halpha;
-  }
-', verbose=TRUE)
+# # matrix vector mult
+# cppFunction('
+#   NumericMatrix mat_vec_mult(int N, int N_knots, NumericMatrix H, NumericVector alpha) {
+#     //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
+#     NumericVector Halpha(N);
+#     
+#     for (int i = 0; i<N; i++)
+#         Halpha(i) = 0;
+#       for (int j = 0; j<N_knots; j++)
+#         Halpha(i) += H(i,j) * alpha(j);    
+# 
+# return Halpha;
+#   }
+# ', verbose=TRUE)
 
 load_stan_output <- function(suff_fit){
   # if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
@@ -257,23 +257,23 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
           mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
         } else {
           
-          t1 <- proc.time()
+#           t1 <- proc.time()
           mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
-          t2 <- proc.time()
-          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + mat_vec_mult(N, N_knots, cs_Csinv, alpha_s[i,]) + mat_vec_mult(N, N_knots, q_Qinv, alpha_t[i,] )
-        
-                t3 <- proc.time()
-                print("OLD mult : ")
-                print(t2-t1)
-                print("NEW mult : ")
-                print(t3-t2)
+#           t2 <- proc.time()
+#           mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + mat_vec_mult(N, N_knots, cs_Csinv, alpha_s[i,]) + mat_vec_mult(N, N_knots, q_Qinv, alpha_t[i,] )
+#         
+#                 t3 <- proc.time()
+#                 print("OLD mult : ")
+#                 print(t2-t1)
+#                 print("NEW mult : ")
+#                 print(t3-t2)
         }
         
       }
 
-      te <- proc.time()
-      print("Single iteration:")
-      print(te-ts)
+#       te <- proc.time()
+#       print("Single iteration:")
+#       print(te-ts)
     
     }
   }
