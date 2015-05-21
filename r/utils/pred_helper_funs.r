@@ -39,6 +39,18 @@ return r;
   }
 ', verbose=TRUE)
 
+# matrix vector mult
+cppFunction('
+  NumericMatrix mat_vec_mult(int N, int N_knots, NumericMatrix H, NumericVector alpha) {
+    //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
+    NumericVector Halpha(N, 1);
+
+    Halpha = H * alpha    
+
+return Halpha;
+  }
+', verbose=TRUE)
+
 load_stan_output <- function(suff_fit){
   # if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
   fname     = sprintf('output/%s.bin', suff_fit)
@@ -186,7 +198,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
 #     col_names[alpha_s_cols]
     alpha_s = post[,1,alpha_s_cols]
 
-    alpha_s_t = t(post[,1,alpha_s_cols])
+#     alpha_s_t = t(post[,1,alpha_s_cols])
     
     C_s <- exp(-d_knots/rho[k])
     c_s <- exp(-d_inter/rho[k])
@@ -207,15 +219,15 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
       # t=1
       mu_g_idx = seq(1, N*T, by=T)
       
-      t1 <- proc.time()
+#       t1 <- proc.time()
       Halpha_s[,k,i] = cs_Csinv %*% alpha_s[i,]
-      t2 <- proc.time()
-      Halpha_s[,k,i] = cs_Csinv %*% alpha_s_t[,i]
-      t3 <- proc.time()
-      print("OLD mult : ")
-      print(t2-t1)
-      print("NEW mult : ")
-      print(t3-t2)
+#       t2 <- proc.time()
+#       Halpha_s[,k,i] = cs_Csinv %*% alpha_s_t[,i]
+#       t3 <- proc.time()
+#       print("OLD mult : ")
+#       print(t2-t1)
+#       print("NEW mult : ")
+#       print(t3-t2)
       
       
       if (mu0){
@@ -241,7 +253,17 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
           Halpha_t[,(k-1)*(T-1) + t-1,i] = q_Qinv %*% alpha_t[i,] 
           mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
         } else {
+          
+          t1 <- proc.time()
           mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+          t2 <- proc.time()
+          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + mat_vec_mult(N, N_knots, cs_Csinv, alpha_s[i,]) + mat_vec_mult(N, N_knots, q_Qinv, alpha_t[i,] )
+        
+                t3 <- proc.time()
+                print("OLD mult : ")
+                print(t2-t1)
+                print("NEW mult : ")
+                print(t3-t2)
         }
         
       }
