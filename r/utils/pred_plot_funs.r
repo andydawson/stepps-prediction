@@ -286,8 +286,6 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
     prop_dat$props[which(prop_dat$props > thresh)] = thresh
   }
 
-  print('debug2')
-
   p <- ggplot() + geom_tile(data=prop_dat, aes(x=x, y=y, fill=props)) + 
     scale_fill_gradientn(colours=tim.colors(), name=bar_title) + coord_fixed() #+
     #scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
@@ -304,7 +302,7 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
 }
 
 
-pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N, K, T, limits, suff, save_plots, fpath=subDir){
+plot_pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N, K, T, limits, suff, save_plots, fpath=subDir){
   
   if (is.null(taxa)){taxa=seq(1,K)}
   if (!is.null(taxa)){
@@ -358,7 +356,7 @@ pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N, K, T
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
+    ggsave(file=paste(fpath, '/veg_maps_props_binned_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
 #     ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.eps', sep=''), scale=1, width=12, height=12)
     #     dev.off()
   }
@@ -399,7 +397,7 @@ plot_data_maps <- function(y, centers, taxa, t, N, K, T, thresh, limits, suff, s
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12)
+    ggsave(file=paste(fpath, '/veg_maps_data_', suff, '.pdf', sep=''), scale=1, width=12)
 #     dev.off()
   }
    return(p)
@@ -571,7 +569,7 @@ plot_core_locations <- function(y, centers_polU, centers_pls, ages, limits, fpat
 }
 
 
-plot_core_locations_select <- function(y, centers_pol, centers_pls, ages, idx.keep, limits, fpath){
+plot_core_locations_select <- function(y, centers_pol, centers_pls, ages, idx.keep, limits, suff, fpath){
  
   rescale = 1000000
   centers = centers_pol*rescale
@@ -636,7 +634,6 @@ plot_core_locations_select <- function(y, centers_pol, centers_pls, ages, idx.ke
   
   if (save_plots){
     ggsave(file=paste(fpath, '/core_locs_', suff, '.pdf', sep=''), scale=1)
-    #     dev.off()
   }
   
   return(p)
@@ -851,9 +848,8 @@ plot_data_maps_binned <- function(y, centers, taxa, t, N, K, T, breaks, limits, 
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12)
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.eps', sep=''), scale=1, width=12)
-    #     dev.off()
+    ggsave(file=paste(fpath, '/veg_maps_data_binned', suff, '.pdf', sep=''), scale=1, width=12)
+#     ggsave(file=paste(fpath, '/veg_maps_data_binned', suff, '.eps', sep=''), scale=1, width=12)
   }
   return(p)
 }

@@ -25,6 +25,7 @@ create_figure_path(subDir)
 
 load(paste('r/dump/', suff_dat, '.rdata', sep=''))
 
+#load_output <- function(suff_fit){
 if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
 #   fname = sprintf('output/%s.csv', suff_fit)
 #   fname = sprintf('output/%s.csv', suff_fit)
@@ -33,15 +34,14 @@ if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
 #   post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
 #   save(post, file=paste0('output/', suff_fit,'.rdata'))
 #   rm(fit)
-  fname   = sprintf('output/%s.bin', suff_fit)
-  object  = read_stanbin(fname)
-#   samples = cbind(object$samples[,5:ncol(object$samples)], object$samples[,1])
-#post = array(0, c(nrow(object$samples), 1, ncol(object$samples)-5))   
-  samples = data.frame(object$samples[,5:ncol(object$samples)], object$samples[,1])
-#   colnames(samples) = colnames(object$samples cbind(colnames(object$samples[,5:ncol(object$samples)]), name(object$samples[,1])))
-  post = array(0, c(nrow(samples), 1, ncol(samples)))   
+  fname     = sprintf('output/%s.bin', suff_fit)
+  object    = read_stanbin(fname) 
+  samples   = data.frame(object$samples[,5:ncol(object$samples)], object$samples[,1])
+  post      = array(0, c(nrow(samples), 1, ncol(samples)))   
   post[,1,] = as.matrix(samples) 
   dimnames(post)[[3]] = colnames(samples)
+  
+  save(post, file=paste0('output/', suff_fit,'.rdata'))
 } else {
   load(paste0('output/', suff_fit,'.rdata'))
 }
@@ -87,12 +87,17 @@ save(process_out, file=paste0(subDir, '/process_out.rdata'))
 
 
 process_mean = build_mu_g(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res)
+# build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
 
 # mu_g     = process_mean$mu_g
 # Halpha_t = process_mean$Halpha_t
 # Halpha_s = process_mean$Halpha_s
 
 save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
+
+
+process_out$g - process_mean$mu_g
+
 
 # niter = dim(post[,1,])[1]
 # mean_Halpha_t = array(NA, dim=c(W, T-1, niter))

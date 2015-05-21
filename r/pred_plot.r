@@ -183,7 +183,7 @@ limits = get_limits(centers_pls)
 # chunk: plot predicted distributions
 ####################################################################################################
 # suff1=paste(suff_fit, '_props', sep='')
-suff = paste0(suff_figs, '_props')
+suff = paste0('props_', suff_figs)
 
 # plot_pred_maps(r_mean, centers_veg, taxa=taxa, ages, N, K, T, thresh=0.5, limits, type='prop', suff=suff1,  save_plots=save_plots)
 
@@ -192,7 +192,7 @@ plot_pred_maps_select(r_mean, centers_veg, taxa=taxa, ages, N, K, T, thresh=0.5,
 
 breaks = c(0, 0.01, 0.05, 0.10, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 1)
 # p_binned <- plot_pred_maps_binned(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff=suff1, save_plots=save_plots)
-p_binned <- pred_maps_binned_select(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff, save_plots, fpath=subDir)
+p_binned <- plot_pred_maps_binned_select(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff=suff_figs, save_plots, fpath=subDir)
 
 # FIX THIS SO it is ONLY select locations...
 ####################################################################################################
@@ -202,25 +202,20 @@ p_binned <- pred_maps_binned_select(r_mean, centers_veg, breaks, taxa, ages, N, 
 # 
 # plot_pred_maps(g_mean, centers_veg, taxa=taxa, ages, N, K-1, T, thresh=NA, limits, type='process', suff=suff2,  save_plots=save_plots)
 
-suff=paste(suff_figs, '_process', sep='')
-
+suff=paste0('process_', suff_figs)
 plot_pred_maps_select(g_mean, centers_veg, taxa=taxa, ages, N, K-1, T, thresh=NA, limits, type='process', suff=suff,  save_plots=save_plots)
 
 ####################################################################################################
 # chunk: plot observed proportions
 ####################################################################################################
-suff=paste(suff_figs, '_data', sep='')
-
-plot_data_maps(y_veg, centers=centers_pls, taxa=taxa, ages, N_pls, K, T, thresh=0.5, limits, suff=suff, save_plots=save_plots)
-
-suff=paste(suff_figs, '_data_binned', sep='')
-plot_data_maps_binned(y_veg, centers=centers_pls, taxa=taxa, ages, N_pls, K, T, breaks, limits, suff=suff, save_plots=save_plots)
+plot_data_maps(y_veg, centers=centers_pls, taxa=taxa, ages, N_pls, K, T, thresh=0.5, limits, suff=suff_figs, save_plots=save_plots)
+plot_data_maps_binned(y_veg, centers=centers_pls, taxa=taxa, ages, N_pls, K, T, breaks, limits, suff=suff_figs, save_plots=save_plots)
 
 
 # N_cores and centers_polU broken for split domain data....
 idx.keep  = c(1,2,length(ages)/2,T)
 # plot_core_locations(y, centers_polU, centers_pls, ages, limits)
-plot_core_locations_select(y, centers_pol, centers_pls, ages, idx.keep, limits, fpat=subDir)
+plot_core_locations_select(y, centers_pol, centers_pls, ages, idx.keep, limits, suff=suff_figs, fpat=subDir)
 
 # # ####################################################################################################
 # # # chunk: plot predicted and observed proportions in same frame
