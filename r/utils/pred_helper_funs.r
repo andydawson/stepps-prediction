@@ -26,7 +26,7 @@ cppFunction('
 # additive log_ratio transformation
 cppFunction('
   NumericMatrix sum2one_constraint(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
-    std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
+    //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
     NumericMatrix r(N*T, K);
     for (int k = 0; k<(K-1); k++)
       for (int j = 0; j<N*T; j++)
@@ -53,431 +53,18 @@ load_stan_output <- function(suff_fit){
   #   load(paste0('output/', suff_fit,'.rdata'))
   # }
   
-  return(post)
+  col_names = colnames(post[,1,])
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))
+  
+  return(list(post=post, par_names=par_names))
 }
 
 
-build_props <- function(post, rho, eta, tau, mu, alpha, N_knots, T, K, N_pars, mpp){
-  
-  #if (length(eta == 1)){eta = rep(eta, W)}
-  
-#    niter = nrow(post)
-  niter=10
-  W     = K-1
-  
-  g = array(NA, dim=c(N*T, W, niter))
-  r    = array(NA, dim=c(N*T, K, niter))
-  ones = matrix(1, nrow=N*T, ncol=1)
-  
-  alpha = post[,1,(N_pars+1):(ncol(post[,1,])-1)]
-  
-  n = seq(1, N_knots)
-  
-  for (i in 1:niter){
-    
-    print(i)
-    
-    for (k in 1:W){  
-#       ta <- proc.time()
-#     
-#       C_s <- exp(-d_knots/rho[k]) # construct spatial covariance matrix
-#       C_t <- exp(-lag/tau)        # construct temporal covariance matrix
-#     
-# #       tb <- proc.time()
-#       
-#       C_s_inv = chol2inv(chol(C_s))
-#       C_t_inv = chol2inv(chol(C_t))
-#       
-# #       tc <- proc.time()
-#       
-#       C_star_inv = 1/(eta[k]*eta[k])*kronecker(C_s_inv, C_t_inv)
-#       
-# #       td <- proc.time()
-#       
-#       c <- build_c(rho[k], tau, eta[k], d_inter, lag)
-      
-#       te <- proc.time()
-#       print('Build c:')
-#       print(te-td)
-      
-      #alpha_idx <- seq(k,ncol(alpha),by=T) 
-      alpha_idx <- seq(k,ncol(alpha),by=W) 
-      alpha_k   <- alpha[i,alpha_idx]
-#       knot_idx <- function(w, n, t){
-#         6 + (n-1)*T*W + (t-1)*W + w-1
-#       }
-#       alpha_k <- alpha[((W-1)*N_knots*T + 1):(W*N_knots*T)]
-      
-#       tf <- proc.time()
-      
-      H_alpha <- c%*%C_star_inv%*%alpha_k    
-      
-#       tg <- proc.time()
-#       print('Matrix mult:')
-#       print(tg-tf)
-      
-      g[,k,i] <- mu[k]*ones + H_alpha
-      
-#       th <-proc.time()
-      
-    }
 
-    sum_exp_g = rowSums(exp(g[,,i]))
-    
-#     ti <- proc.time()
-    
-    # additive log-ratio transformation
-    for (k in 1:W)
-      for (j in 1:(N*T))
-        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
+build_r <- function(post_dat, T, K){
 
-    for (j in 1:(N*T))
-      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
-#     
-#     tj <- proc.time()
-#     print("OLD Build r:")
-#     print(tj-ti)
-#     
-#     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
-#     tk <- proc.time()
-#     print("NEW Build r:")
-#     print(tk-tj)
-  }
-
-  return(list(r=r, g=g))
-}
-
-
-build_props_new <- function(post, rho, eta, T, K, d, d_inter, d_knots, mpp){
-  
-  N = nrow(d_inter)
-  N_knots = ncol(d_inter)
-  niter   = dim(post[,1,])[1] 
-  
-  W = K-1
-  
-  #   g = array(NA, c(W, N, niters))
-  #   Halpha = array(NA, c(W, N, niters))
-  
-  #if (length(eta == 1)){eta = rep(eta, W)}
-  
-  #    niter = nrow(post)
-  W     = K-1
-  
-  #   g = array(NA, c(W, N, niters))
-  #   Halpha = array(NA, c(W, N, niters))
-  
-  g    = array(NA, dim=c(N*T, W, niter))
-  r    = array(NA, dim=c(N*T, K, niter))
-  Halpha = array(NA, dim=c(N_knots, W, niter))
-  ones = matrix(1, nrow=N*T, ncol=1)
-  
-  #   alpha = post[,1,(N_pars+1):(ncol(post[,1,])-1)]
-  
-  #   n = seq(1, N_knots)
-  
-  col_substr = substr(colnames(post[,1,]),1,2)
-  
-  tau   = post[,1,which(col_substr == 'ta')]
-  
-  for (k in 1:W){
-    
-    if (mpp){
-      
-      mu    = post[,1,which(col_substr == 'mu')[k]]
-      
-      knot_cols = seq((W + 1 + k), (W + k + W*N_knots*T), by=W) 
-      
-      alpha     = post[,1, knot_cols]
-      
-      
-      for (i in 1:niter){
-        C_s <- exp(-d_knots/rho[k]) 
-        C_t <- exp(-lag/tau[i])       
-        
-        C_s_inv = chol2inv(chol(C_s))
-        C_t_inv = chol2inv(chol(C_t))
-        
-        #       tc <- proc.time()
-        
-        C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
-      }
-      
-      g_cols    = seq((W + W*N_knots*T + k + 1), (W + W*N_knots*T + k + W*N*T), by=W)
-      
-      g[,k,]         = t(post[,1,g_cols])
-      
-      #     for (i in 1:niters){
-      #       
-      #       
-      #       
-      #     }
-    }
-  }
-  
-  
-  
-  #   alpha     = post[,1, knot_cols]
-  # 
-  #   for (i in 1:niter){
-  #     
-  #     print(i)
-  #     
-  #     for (k in 1:W){  
-  #       
-  #       C_s <- exp(-d_knots/rho[k]) # construct spatial covariance matrix
-  #       C_t <- exp(-lag/tau)        # construct temporal covariance matrix
-  #       
-  #       #       tb <- proc.time()
-  #       
-  #       C_s_inv = chol2inv(chol(C_s))
-  #       C_t_inv = chol2inv(chol(C_t))
-  #       
-  #       #       tc <- proc.time()
-  #       
-  #       C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
-  #       
-  #       #       td <- proc.time()
-  #       
-  #       c <- build_c(rho[k], tau, eta[k], d_inter, lag)
-  #       
-  #       #       te <- proc.time()
-  #       #       print('Build c:')
-  #       #       print(te-td)
-  #       
-  #       #alpha_idx <- seq(k,ncol(alpha),by=T) 
-  #       alpha_idx <- seq(k,ncol(alpha),by=W) 
-  #       alpha_k   <- alpha[i,alpha_idx]
-  #       #       knot_idx <- function(w, n, t){
-  #       #         6 + (n-1)*T*W + (t-1)*W + w-1
-  #       #       }
-  #       #       alpha_k <- alpha[((W-1)*N_knots*T + 1):(W*N_knots*T)]
-  #       
-  #       #       tf <- proc.time()
-  #       
-  #       H_alpha <- c%*%C_star_inv%*%alpha_k    
-  #       
-  #       #       tg <- proc.time()
-  #       #       print('Matrix mult:')
-  #       #       print(tg-tf)
-  #       
-  #       g[,k,i] <- mu[k]*ones + H_alpha
-  #       
-  #       #       th <-proc.time()
-  #       
-  #     }
-  
-  for (i in 1:niter){
-    
-    sum_exp_g = rowSums(exp(g[,,i]))
-    
-    #     ti <- proc.time()
-    
-    # additive log-ratio transformation
-    for (k in 1:W)
-      for (j in 1:(N*T))
-        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
-    
-    for (j in 1:(N*T))
-      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
-    #     
-    #     tj <- proc.time()
-    #     print("OLD Build r:")
-    #     print(tj-ti)
-    #     
-    #     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
-    #     tk <- proc.time()
-    #     print("NEW Build r:")
-    #     print(tk-tj)
-  }
-  
-  return(list(r=r, g=g))
-}
-
-
-build_props_mut <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut){
-  
-  N = nrow(d_inter)
-  N_knots = ncol(d_inter)
-  niter   = dim(post[,1,])[1] 
-  
-  W = K-1
-  
-  g    = array(NA, dim=c(N*T, W, niter))
-  r    = array(NA, dim=c(N*T, K, niter))
-  #   Halpha = array(NA, dim=c(N_knots, W, niter))
-  ones = matrix(1, nrow=N*T, ncol=1)
-  
-  Halpha = array(NA, dim=c(N*T, W, niter))
-  sumHalpha = array(NA, dim=c(T, W, niter))
-  
-  col.names = colnames(post[,1,])
-  
-  #   alpha = post[,1,(N_pars+1):(ncol(post[,1,])-1)]
-  
-  #   n = seq(1, N_knots)
-  
-  col_substr = substr(colnames(post[,1,]),1,2)
-  #  
-  #   tau   = post[,1,which(col_substr == 'ta')]
-  #   ksi   = post[,1,which(col_substr == 'ks')]
-  #   omega = post[,1,which(col_substr == 'om')]
-  tau = post[,1,1]
-  
-  if (od){
-    x = matrix(1, nrow=(N*T), ncol=1)
-    N_p = N*T
-    
-    temp = qr(x)
-    Q = qr.Q(temp)
-#     R = qr.R(temp)
-    
-#     P = Q %*% t(Q)
-  }
-  
-  for (k in 1:W){
-    print(k)
-    mu    = post[,1,which(col_substr == 'mu')[k]]
-    #       mut_cols = seq((3+W+k), (3+W+k+W*T-1), by=W)
-    #       colnames(post[,1,])[mut_cols]
-    #       mu_t      = post[,1,mut_cols]
-    if (od & !mpp & !mut){
-      knot_cols = seq((W + 1 + k), (W + 1 + k + W*N_knots*T - 1), by=W) 
-    } else if  (od & mpp & mut) {
-      knot_cols = seq((W + 3 + k + W*T), (W + 3 + k + W*T + W*N_knots*T - 1), by=W) 
-    }
-    
-    print(col.names[knot_cols][1:10])
-    print(length(col.names[knot_cols]))
-    alpha     = post[,1, knot_cols]
-    
-    C_s <- exp(-d_knots/rho[k])
-    c_s <- exp(-d_inter/rho[k])
-    C_s_inv = chol2inv(chol(C_s))
-    
-    cs_Csinv = c_s %*% C_s_inv
-    
-    c_Cstarinv = kronecker(cs_Csinv, diag(T))
-    
-    for (i in 1:niter){
-      print(i)
-      
-      #         C_t <- exp(-lag/tau[i])       
-      #         
-      #         
-      #         C_t_inv = chol2inv(chol(C_t))
-      #         
-      #         #       tc <- proc.time()
-      #         
-      #         C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
-      #         c <- build_c(rho[k], tau[i], eta[k], d_inter, lag)
-      #         
-      #         Halpha2 <- c %*% C_star_inv %*% alpha[i,]
-      if (od){
-        c_Cinv_alpha <- c_Cstarinv %*% alpha[i,]
-        Halpha[,k,i] <- c_Cinv_alpha - Q %*% (t(Q) %*% c_Cinv_alpha)
-      } else {
-        Halpha[,k,i] <- c_Cstarinv %*% alpha[i,]
-      }
-      
-      
-      
-      for (t in 1:T){
-        sumHalpha[t, k, i] = sum(Halpha[seq(t, N*T, by=T),k,i])
-      }
-      
-    }
-    
-    if (od & !mpp & !mut){
-      g[,k,] = mu[k] + Halpha[,k,]
-    } else if  (od & mpp & mut) {
-      g_cols = seq((3 + W + W*T + W*N_knots*T + k), (3 + W + W*T + W*N_knots*T + k + W*N*T - 1), by=W)
-      colnames(post[,1,])[g_cols]
-      g[,k,]         = t(post[,1,g_cols])
-    }
-    
-  }
-  
-  
-  
-  #   alpha     = post[,1, knot_cols]
-  # 
-  #   for (i in 1:niter){
-  #     
-  #     print(i)
-  #     
-  #     for (k in 1:W){  
-  #       
-  #       C_s <- exp(-d_knots/rho[k]) # construct spatial covariance matrix
-  #       C_t <- exp(-lag/tau)        # construct temporal covariance matrix
-  #       
-  #       #       tb <- proc.time()
-  #       
-  #       C_s_inv = chol2inv(chol(C_s))
-  #       C_t_inv = chol2inv(chol(C_t))
-  #       
-  #       #       tc <- proc.time()
-  #       
-  #       C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
-  #       
-  #       #       td <- proc.time()
-  #       
-  #       c <- build_c(rho[k], tau, eta[k], d_inter, lag)
-  #       
-  #       #       te <- proc.time()
-  #       #       print('Build c:')
-  #       #       print(te-td)
-  #       
-  #       #alpha_idx <- seq(k,ncol(alpha),by=T) 
-  #       alpha_idx <- seq(k,ncol(alpha),by=W) 
-  #       alpha_k   <- alpha[i,alpha_idx]
-  #       #       knot_idx <- function(w, n, t){
-  #       #         6 + (n-1)*T*W + (t-1)*W + w-1
-  #       #       }
-  #       #       alpha_k <- alpha[((W-1)*N_knots*T + 1):(W*N_knots*T)]
-  #       
-  #       #       tf <- proc.time()
-  #       
-  #       H_alpha <- c%*%C_star_inv%*%alpha_k    
-  #       
-  #       #       tg <- proc.time()
-  #       #       print('Matrix mult:')
-  #       #       print(tg-tf)
-  #       
-  #       g[,k,i] <- mu[k]*ones + H_alpha
-  #       
-  #       #       th <-proc.time()
-  #       
-  #     }
-  
-  for (i in 1:niter){
-    
-    sum_exp_g = rowSums(exp(g[,,i]))
-    
-    #     ti <- proc.time()
-    
-    # additive log-ratio transformation
-    for (k in 1:W)
-      for (j in 1:(N*T))
-        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
-    
-    for (j in 1:(N*T))
-      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
-    #     
-    #     tj <- proc.time()
-    #     print("OLD Build r:")
-    #     print(tj-ti)
-    #     
-    #     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
-    #     tk <- proc.time()
-    #     print("NEW Build r:")
-    #     print(tk-tj)
-  }
-  
-  return(list(r=r, g=g, sumHalpha=sumHalpha, Halpha=Halpha))
-}
-
-build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
+  post      = post_dat$post
+  par_names = post_dat$par_names
   
   W = K-1
   N = nrow(d_inter)
@@ -488,10 +75,10 @@ build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res
   r    = array(NA, dim=c(N*T, K, niter))
   #r_new    = array(NA, dim=c(N*T, K, niter))
 
-  col_names  = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
-  #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
-  #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))  
+#   col_names  = colnames(post[,1,])
+#   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
+#   #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
+#   #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))  
 
   for (k in 1:W){
     
@@ -534,7 +121,10 @@ build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res
   return(list(r=r, g=g))
 }
 
-build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
+build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0){
+  
+  post      = post_dat$post
+  par_names = post_dat$par_names
   
   N       = nrow(d_inter)
   N_knots = ncol(d_inter)
@@ -554,10 +144,10 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
   
   print("Done allocating")
   
-  col_names  = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
-  #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
-  #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))  
+#   col_names  = colnames(post[,1,])
+#   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
+#   #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
+#   #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))  
 
   ksi    = post[,1, which(par_names == 'ksi')]
   
@@ -1775,29 +1365,6 @@ cores_near_domain <-function(knots, cells, cell_width){
   knots_int
 }
 
-
-# # left = rownames(tree_type)[!(rownames(tree_type) %in% taxa_sub)]
-# left = rownames(tree_type)[!(rownames(tree_type) %in% toupper(taxa_sub))]
-# y = data.frame(counts[, colnames(counts) %in% toupper(taxa_sub)])
-# 
-# taxa_other_hw = rownames(tree_type)[which(tree_type$type == 'HW')]
-# taxa_other_con = rownames(tree_type)[which(tree_type$type == 'CON')]
-# 
-# if (sum(left %in% taxa_other_hw)>1){
-#   y$OTHER.HARDWOOD = rowSums(counts[,left[left %in% taxa_other_hw]])
-# } else {
-#   y$OTHER.HARDWOOD = counts[,left[left %in% taxa_other_hw]]
-# }
-# 
-# if (sum(left %in% taxa_other_con)>1){
-#   y$OTHER.CONIFER = rowSums(counts[,left[left %in% taxa_other_con]])
-# } else {
-#   y$OTHER.CONIFER = counts[,left[left %in% taxa_other_con]]
-# }
-# 
-# y = y[,sort(colnames(y))]
-
-
 convert_counts <- function(counts, tree_type, taxa_sub){
   
   y_veg = data.frame(counts[, colnames(counts) %in% taxa_sub])
@@ -1875,4 +1442,425 @@ get_quants <- function(post, npars){
 #   colnames(quants) = c('mean', '2.5%', '50%', '97.5%', 'n_eff', 'Rhat')
   
   return(quants)
+}
+
+
+build_props <- function(post, rho, eta, tau, mu, alpha, N_knots, T, K, N_pars, mpp){
+  
+  #if (length(eta == 1)){eta = rep(eta, W)}
+  
+  #    niter = nrow(post)
+  niter=10
+  W     = K-1
+  
+  g = array(NA, dim=c(N*T, W, niter))
+  r    = array(NA, dim=c(N*T, K, niter))
+  ones = matrix(1, nrow=N*T, ncol=1)
+  
+  alpha = post[,1,(N_pars+1):(ncol(post[,1,])-1)]
+  
+  n = seq(1, N_knots)
+  
+  for (i in 1:niter){
+    
+    print(i)
+    
+    for (k in 1:W){  
+      #       ta <- proc.time()
+      #     
+      #       C_s <- exp(-d_knots/rho[k]) # construct spatial covariance matrix
+      #       C_t <- exp(-lag/tau)        # construct temporal covariance matrix
+      #     
+      # #       tb <- proc.time()
+      #       
+      #       C_s_inv = chol2inv(chol(C_s))
+      #       C_t_inv = chol2inv(chol(C_t))
+      #       
+      # #       tc <- proc.time()
+      #       
+      #       C_star_inv = 1/(eta[k]*eta[k])*kronecker(C_s_inv, C_t_inv)
+      #       
+      # #       td <- proc.time()
+      #       
+      #       c <- build_c(rho[k], tau, eta[k], d_inter, lag)
+      
+      #       te <- proc.time()
+      #       print('Build c:')
+      #       print(te-td)
+      
+      #alpha_idx <- seq(k,ncol(alpha),by=T) 
+      alpha_idx <- seq(k,ncol(alpha),by=W) 
+      alpha_k   <- alpha[i,alpha_idx]
+      #       knot_idx <- function(w, n, t){
+      #         6 + (n-1)*T*W + (t-1)*W + w-1
+      #       }
+      #       alpha_k <- alpha[((W-1)*N_knots*T + 1):(W*N_knots*T)]
+      
+      #       tf <- proc.time()
+      
+      H_alpha <- c%*%C_star_inv%*%alpha_k    
+      
+      #       tg <- proc.time()
+      #       print('Matrix mult:')
+      #       print(tg-tf)
+      
+      g[,k,i] <- mu[k]*ones + H_alpha
+      
+      #       th <-proc.time()
+      
+    }
+    
+    sum_exp_g = rowSums(exp(g[,,i]))
+    
+    #     ti <- proc.time()
+    
+    # additive log-ratio transformation
+    for (k in 1:W)
+      for (j in 1:(N*T))
+        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
+    
+    for (j in 1:(N*T))
+      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
+    #     
+    #     tj <- proc.time()
+    #     print("OLD Build r:")
+    #     print(tj-ti)
+    #     
+    #     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    #     tk <- proc.time()
+    #     print("NEW Build r:")
+    #     print(tk-tj)
+  }
+  
+  return(list(r=r, g=g))
+}
+
+
+build_props_new <- function(post, rho, eta, T, K, d, d_inter, d_knots, mpp){
+  
+  N = nrow(d_inter)
+  N_knots = ncol(d_inter)
+  niter   = dim(post[,1,])[1] 
+  
+  W = K-1
+  
+  #   g = array(NA, c(W, N, niters))
+  #   Halpha = array(NA, c(W, N, niters))
+  
+  #if (length(eta == 1)){eta = rep(eta, W)}
+  
+  #    niter = nrow(post)
+  W     = K-1
+  
+  #   g = array(NA, c(W, N, niters))
+  #   Halpha = array(NA, c(W, N, niters))
+  
+  g    = array(NA, dim=c(N*T, W, niter))
+  r    = array(NA, dim=c(N*T, K, niter))
+  Halpha = array(NA, dim=c(N_knots, W, niter))
+  ones = matrix(1, nrow=N*T, ncol=1)
+  
+  #   alpha = post[,1,(N_pars+1):(ncol(post[,1,])-1)]
+  
+  #   n = seq(1, N_knots)
+  
+  col_substr = substr(colnames(post[,1,]),1,2)
+  
+  tau   = post[,1,which(col_substr == 'ta')]
+  
+  for (k in 1:W){
+    
+    if (mpp){
+      
+      mu    = post[,1,which(col_substr == 'mu')[k]]
+      
+      knot_cols = seq((W + 1 + k), (W + k + W*N_knots*T), by=W) 
+      
+      alpha     = post[,1, knot_cols]
+      
+      
+      for (i in 1:niter){
+        C_s <- exp(-d_knots/rho[k]) 
+        C_t <- exp(-lag/tau[i])       
+        
+        C_s_inv = chol2inv(chol(C_s))
+        C_t_inv = chol2inv(chol(C_t))
+        
+        #       tc <- proc.time()
+        
+        C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
+      }
+      
+      g_cols    = seq((W + W*N_knots*T + k + 1), (W + W*N_knots*T + k + W*N*T), by=W)
+      
+      g[,k,]         = t(post[,1,g_cols])
+      
+      #     for (i in 1:niters){
+      #       
+      #       
+      #       
+      #     }
+    }
+  }
+  
+  
+  
+  #   alpha     = post[,1, knot_cols]
+  # 
+  #   for (i in 1:niter){
+  #     
+  #     print(i)
+  #     
+  #     for (k in 1:W){  
+  #       
+  #       C_s <- exp(-d_knots/rho[k]) # construct spatial covariance matrix
+  #       C_t <- exp(-lag/tau)        # construct temporal covariance matrix
+  #       
+  #       #       tb <- proc.time()
+  #       
+  #       C_s_inv = chol2inv(chol(C_s))
+  #       C_t_inv = chol2inv(chol(C_t))
+  #       
+  #       #       tc <- proc.time()
+  #       
+  #       C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
+  #       
+  #       #       td <- proc.time()
+  #       
+  #       c <- build_c(rho[k], tau, eta[k], d_inter, lag)
+  #       
+  #       #       te <- proc.time()
+  #       #       print('Build c:')
+  #       #       print(te-td)
+  #       
+  #       #alpha_idx <- seq(k,ncol(alpha),by=T) 
+  #       alpha_idx <- seq(k,ncol(alpha),by=W) 
+  #       alpha_k   <- alpha[i,alpha_idx]
+  #       #       knot_idx <- function(w, n, t){
+  #       #         6 + (n-1)*T*W + (t-1)*W + w-1
+  #       #       }
+  #       #       alpha_k <- alpha[((W-1)*N_knots*T + 1):(W*N_knots*T)]
+  #       
+  #       #       tf <- proc.time()
+  #       
+  #       H_alpha <- c%*%C_star_inv%*%alpha_k    
+  #       
+  #       #       tg <- proc.time()
+  #       #       print('Matrix mult:')
+  #       #       print(tg-tf)
+  #       
+  #       g[,k,i] <- mu[k]*ones + H_alpha
+  #       
+  #       #       th <-proc.time()
+  #       
+  #     }
+  
+  for (i in 1:niter){
+    
+    sum_exp_g = rowSums(exp(g[,,i]))
+    
+    #     ti <- proc.time()
+    
+    # additive log-ratio transformation
+    for (k in 1:W)
+      for (j in 1:(N*T))
+        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
+    
+    for (j in 1:(N*T))
+      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
+    #     
+    #     tj <- proc.time()
+    #     print("OLD Build r:")
+    #     print(tj-ti)
+    #     
+    #     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    #     tk <- proc.time()
+    #     print("NEW Build r:")
+    #     print(tk-tj)
+  }
+  
+  return(list(r=r, g=g))
+}
+
+
+build_props_mut <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mut){
+  
+  N = nrow(d_inter)
+  N_knots = ncol(d_inter)
+  niter   = dim(post[,1,])[1] 
+  
+  W = K-1
+  
+  g    = array(NA, dim=c(N*T, W, niter))
+  r    = array(NA, dim=c(N*T, K, niter))
+  #   Halpha = array(NA, dim=c(N_knots, W, niter))
+  ones = matrix(1, nrow=N*T, ncol=1)
+  
+  Halpha = array(NA, dim=c(N*T, W, niter))
+  sumHalpha = array(NA, dim=c(T, W, niter))
+  
+  col.names = colnames(post[,1,])
+  
+  #   alpha = post[,1,(N_pars+1):(ncol(post[,1,])-1)]
+  
+  #   n = seq(1, N_knots)
+  
+  col_substr = substr(colnames(post[,1,]),1,2)
+  #  
+  #   tau   = post[,1,which(col_substr == 'ta')]
+  #   ksi   = post[,1,which(col_substr == 'ks')]
+  #   omega = post[,1,which(col_substr == 'om')]
+  tau = post[,1,1]
+  
+  if (od){
+    x = matrix(1, nrow=(N*T), ncol=1)
+    N_p = N*T
+    
+    temp = qr(x)
+    Q = qr.Q(temp)
+    #     R = qr.R(temp)
+    
+    #     P = Q %*% t(Q)
+  }
+  
+  for (k in 1:W){
+    print(k)
+    mu    = post[,1,which(col_substr == 'mu')[k]]
+    #       mut_cols = seq((3+W+k), (3+W+k+W*T-1), by=W)
+    #       colnames(post[,1,])[mut_cols]
+    #       mu_t      = post[,1,mut_cols]
+    if (od & !mpp & !mut){
+      knot_cols = seq((W + 1 + k), (W + 1 + k + W*N_knots*T - 1), by=W) 
+    } else if  (od & mpp & mut) {
+      knot_cols = seq((W + 3 + k + W*T), (W + 3 + k + W*T + W*N_knots*T - 1), by=W) 
+    }
+    
+    print(col.names[knot_cols][1:10])
+    print(length(col.names[knot_cols]))
+    alpha     = post[,1, knot_cols]
+    
+    C_s <- exp(-d_knots/rho[k])
+    c_s <- exp(-d_inter/rho[k])
+    C_s_inv = chol2inv(chol(C_s))
+    
+    cs_Csinv = c_s %*% C_s_inv
+    
+    c_Cstarinv = kronecker(cs_Csinv, diag(T))
+    
+    for (i in 1:niter){
+      print(i)
+      
+      #         C_t <- exp(-lag/tau[i])       
+      #         
+      #         
+      #         C_t_inv = chol2inv(chol(C_t))
+      #         
+      #         #       tc <- proc.time()
+      #         
+      #         C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
+      #         c <- build_c(rho[k], tau[i], eta[k], d_inter, lag)
+      #         
+      #         Halpha2 <- c %*% C_star_inv %*% alpha[i,]
+      if (od){
+        c_Cinv_alpha <- c_Cstarinv %*% alpha[i,]
+        Halpha[,k,i] <- c_Cinv_alpha - Q %*% (t(Q) %*% c_Cinv_alpha)
+      } else {
+        Halpha[,k,i] <- c_Cstarinv %*% alpha[i,]
+      }
+      
+      
+      
+      for (t in 1:T){
+        sumHalpha[t, k, i] = sum(Halpha[seq(t, N*T, by=T),k,i])
+      }
+      
+    }
+    
+    if (od & !mpp & !mut){
+      g[,k,] = mu[k] + Halpha[,k,]
+    } else if  (od & mpp & mut) {
+      g_cols = seq((3 + W + W*T + W*N_knots*T + k), (3 + W + W*T + W*N_knots*T + k + W*N*T - 1), by=W)
+      colnames(post[,1,])[g_cols]
+      g[,k,]         = t(post[,1,g_cols])
+    }
+    
+  }
+  
+  
+  
+  #   alpha     = post[,1, knot_cols]
+  # 
+  #   for (i in 1:niter){
+  #     
+  #     print(i)
+  #     
+  #     for (k in 1:W){  
+  #       
+  #       C_s <- exp(-d_knots/rho[k]) # construct spatial covariance matrix
+  #       C_t <- exp(-lag/tau)        # construct temporal covariance matrix
+  #       
+  #       #       tb <- proc.time()
+  #       
+  #       C_s_inv = chol2inv(chol(C_s))
+  #       C_t_inv = chol2inv(chol(C_t))
+  #       
+  #       #       tc <- proc.time()
+  #       
+  #       C_star_inv = 1/eta[k]*kronecker(C_s_inv, C_t_inv)
+  #       
+  #       #       td <- proc.time()
+  #       
+  #       c <- build_c(rho[k], tau, eta[k], d_inter, lag)
+  #       
+  #       #       te <- proc.time()
+  #       #       print('Build c:')
+  #       #       print(te-td)
+  #       
+  #       #alpha_idx <- seq(k,ncol(alpha),by=T) 
+  #       alpha_idx <- seq(k,ncol(alpha),by=W) 
+  #       alpha_k   <- alpha[i,alpha_idx]
+  #       #       knot_idx <- function(w, n, t){
+  #       #         6 + (n-1)*T*W + (t-1)*W + w-1
+  #       #       }
+  #       #       alpha_k <- alpha[((W-1)*N_knots*T + 1):(W*N_knots*T)]
+  #       
+  #       #       tf <- proc.time()
+  #       
+  #       H_alpha <- c%*%C_star_inv%*%alpha_k    
+  #       
+  #       #       tg <- proc.time()
+  #       #       print('Matrix mult:')
+  #       #       print(tg-tf)
+  #       
+  #       g[,k,i] <- mu[k]*ones + H_alpha
+  #       
+  #       #       th <-proc.time()
+  #       
+  #     }
+  
+  for (i in 1:niter){
+    
+    sum_exp_g = rowSums(exp(g[,,i]))
+    
+    #     ti <- proc.time()
+    
+    # additive log-ratio transformation
+    for (k in 1:W)
+      for (j in 1:(N*T))
+        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
+    
+    for (j in 1:(N*T))
+      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
+    #     
+    #     tj <- proc.time()
+    #     print("OLD Build r:")
+    #     print(tj-ti)
+    #     
+    #     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    #     tk <- proc.time()
+    #     print("NEW Build r:")
+    #     print(tk-tj)
+  }
+  
+  return(list(r=r, g=g, sumHalpha=sumHalpha, Halpha=Halpha))
 }
