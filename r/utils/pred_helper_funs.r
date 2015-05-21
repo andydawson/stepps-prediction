@@ -80,13 +80,15 @@ build_r <- function(post_dat, T, K){
 #   #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
 #   #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))  
 
+  g_cols = which(par_names == 'g')
+  
   for (k in 1:W){
     
     print(k)
     
-    g_cols = seq(k, T*N*W, by=W)
+    g_k_cols = seq(k, T*N*W, by=W)
 #     col_names[which(par_names == 'g')][g_cols]
-    g[,k,] = t(post[,1,which(par_names == 'g')[g_cols]])    
+    g[,k,] = t(post[,1,g_cols[g_k_cols]])    
 
   }
   
@@ -176,7 +178,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
     } else {
       mut_cols = seq(k, T*W, by=W)
     }
-    col_names[which(par_names == 'mu_t')[mut_cols]]
+#     col_names[which(par_names == 'mu_t')[mut_cols]]
     mu_t = post[,1,which(par_names == 'mu_t')[mut_cols]]
     
     alpha_s_cols = seq(alpha_s_start + k - 1, alpha_s_start + N_knots*W - 1, by=W)
