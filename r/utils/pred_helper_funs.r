@@ -468,7 +468,8 @@ build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res
   
   g    = array(NA, dim=c(N*T, W, niter))
   r    = array(NA, dim=c(N*T, K, niter))
-  
+  r_new    = array(NA, dim=c(N*T, K, niter))
+
   col_names  = colnames(post[,1,])
   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
   #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
@@ -486,7 +487,7 @@ build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res
   
   print("Log-ratio transforming g")
   
-  for (i in 1:niter){
+  for (i in 1:10){#niter){
     
     if ( (i %% 100) == 0 ) { print(paste0("Iteration ", i))}
     
@@ -506,13 +507,13 @@ build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res
     print("OLD Build r:")
     print(tj-ti)
        
-    r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    r_new[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
     tk <- proc.time()
     print("NEW Build r:")
     print(tk-tj)
   }
   
-  return(list(r=r, g=g))
+  return(list(r_new=r_new, r=r, g=g))
 }
 
 build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
@@ -582,8 +583,10 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
       cs_Csinv = c_s %*% C_s_inv
     }
        
-    for (i in 1:niter){
-      
+    for (i in 1:10){#niter){
+     
+      if ( (i %% 100) == 0 ) { print(paste0("Iteration ", i))}	      
+
       # t=1
       mu_g_idx = seq(1, N*T, by=T)
       
