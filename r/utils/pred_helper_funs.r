@@ -1451,7 +1451,7 @@ get_quants <- function(post, npars){
   
   quants <- colMeans(post[,1,1:npars])
   
-  quants <- apply(post[,1,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975))
+  quants <- apply(post[,1,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975)))
   
 #   quants <- cbind(summary(fit)$summary[,'mean'][1:npars],
 #                   summary(fit)$summary[,'2.5%'][1:(npars)],
