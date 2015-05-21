@@ -400,21 +400,21 @@ build_props_full <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp,
 }
 
 
-get_corrections <- function(post, rho, eta, T, K, d_inter, d_knots){
+get_corrections <- function(post_dat, rho, eta, T, K, d_inter, d_knots){
+  
+  post      = post_dat$post
+  par_names = post_dat$par_names
   
   N     = nrow(d_inter)
   niter = dim(post[,1,])[1] 
   
   W = K-1
-  col.names = colnames(post[,1,])
-
-  col_substr = substr(colnames(post[,1,]),1,2)
 
   adj_s = array(NA, dim=c(N, W))
   adj_t = array(NA, dim=c(N, W))
   
-  sigma  = colMeans(post[,1,which(col_substr == 'si')])
-  lambda = colMeans(post[,1,which(col_substr == 'la')])
+  sigma  = colMeans(post[,1,which(par_names == 'sigma')])
+  lambda = colMeans(post[,1,which(par_names == 'lambda')])
   
   for (k in 1:W){
 
