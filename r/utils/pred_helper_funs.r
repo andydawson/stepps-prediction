@@ -164,7 +164,8 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
     P = Q %*% t(Q)
   }
   
-  mu = post[,1,which(par_names == 'mu')]
+  mu   = post[,1,which(par_names == 'mu')]
+  mu_t = post[,1,which(par_names == 'mu_t')]
 
   for (k in 1:W){
     print(k)
@@ -179,7 +180,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
       mut_cols = seq(k, T*W, by=W)
     }
 #     col_names[which(par_names == 'mu_t')[mut_cols]]
-    mu_t = post[,1,which(par_names == 'mu_t')[mut_cols]]
+    mu_t_k = mu_t[,mut_cols]
     
     alpha_s_cols = seq(alpha_s_start + k - 1, alpha_s_start + N_knots*W - 1, by=W)
 #     col_names[alpha_s_cols]
@@ -195,9 +196,9 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
       cs_Csinv = c_s %*% C_s_inv
     }
        
-    for (i in 1:10){#niter){
+    for (i in 1:niter){
      
-      if ( (i %% 100) == 0 ) { print(paste0("Iteration ", i))}	      
+      if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}	      
 
       # t=1
       mu_g_idx = seq(1, N*T, by=T)
@@ -207,7 +208,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
       if (mu0){
         mu_g[mu_g_idx,k,i] = mu[i,k] + Halpha_s[,k,i] 
       } else {
-        mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t[i,1] + Halpha_s[,k,i] 
+        mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,1] + Halpha_s[,k,i] 
       }
       
       Q <- exp(-d_knots/lambda[i])
@@ -225,16 +226,16 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
         mu_g_idx = seq(t, N*T, by=T)
         if (mu0){
           Halpha_t[,(k-1)*(T-1) + t-1,i] = q_Qinv %*% alpha_t[i,] 
-          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
+          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
         } else {
-          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
         }
         
       }
     }
   }
   
-  mu_t = get_mut(post, W)
+  #mu_t = get_mut(post, W)
   #mu   = get_mu(post, W)
   
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
