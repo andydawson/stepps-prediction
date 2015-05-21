@@ -85,7 +85,7 @@ build_r <- function(post_dat, T, K){
     print(k)
     
     g_cols = seq(k, T*N*W, by=W)
-    col_names[which(par_names == 'g')][g_cols]
+#     col_names[which(par_names == 'g')][g_cols]
     g[,k,] = t(post[,1,which(par_names == 'g')[g_cols]])    
 
   }
