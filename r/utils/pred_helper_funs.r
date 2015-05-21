@@ -468,7 +468,7 @@ build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res
   
   g    = array(NA, dim=c(N*T, W, niter))
   r    = array(NA, dim=c(N*T, K, niter))
-  r_new    = array(NA, dim=c(N*T, K, niter))
+  #r_new    = array(NA, dim=c(N*T, K, niter))
 
   col_names  = colnames(post[,1,])
   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
@@ -487,33 +487,33 @@ build_r <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res
   
   print("Log-ratio transforming g")
   
-  for (i in 1:10){#niter){
+  for (i in 1:niter){
     
-    if ( (i %% 100) == 0 ) { print(paste0("Iteration ", i))}
+    if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
     
     sum_exp_g = rowSums(exp(g[,,i]))
     
-    ti <- proc.time()
+    #ti <- proc.time()
     
     # additive log-ratio transformation
-    for (k in 1:W)
-      for (j in 1:(N*T))
-        r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
+    # for (k in 1:W)
+    #   for (j in 1:(N*T))
+    #     r[j,k,i] <- exp(g[j,k,i]) / (1 + sum_exp_g[j])
     
-    for (j in 1:(N*T))
-      r[j,K,i] <- 1 / (1 + sum_exp_g[j])
-    #     
-    tj <- proc.time()
-    print("OLD Build r:")
-    print(tj-ti)
+    # for (j in 1:(N*T))
+    #   r[j,K,i] <- 1 / (1 + sum_exp_g[j])
+    # #     
+    # tj <- proc.time()
+    # print("OLD Build r:")
+    # print(tj-ti)
        
-    r_new[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
-    tk <- proc.time()
-    print("NEW Build r:")
-    print(tk-tj)
+    r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    # tk <- proc.time()
+    # print("NEW Build r:")
+    # print(tk-tj)
   }
   
-  return(list(r_new=r_new, r=r, g=g))
+  return(list(r=r, g=g))
 }
 
 build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, res){
@@ -537,10 +537,10 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
   print("Done allocating")
   
   col_names  = colnames(post[,1,])
-  #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
-  #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
-  
+  #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
+  #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))  
+
   ksi    = post[,1, which(par_names == 'ksi')]
   
   alpha_s_start = min(which(par_names == 'alpha_s'))
@@ -554,10 +554,12 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
     P = Q %*% t(Q)
   }
   
+  mu = post[,1,which(par_names == 'mu')]
+
   for (k in 1:W){
     print(k)
     
-    mu     = post[,1,which(par_names == 'mu')[k]]
+    #mu     = post[,1,which(par_names == 'mu')[k]]
     sigma  = post[,1,which(par_names == 'sigma')[k]]
     lambda = post[,1,which(par_names == 'lambda')[k]]
     
@@ -593,9 +595,9 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
       Halpha_s[,k,i] = cs_Csinv %*% alpha_s[i,]
       
       if (mu0){
-        mu_g[mu_g_idx,k,i] = mu[i] + Halpha_s[,k,i] 
+        mu_g[mu_g_idx,k,i] = mu[i,k] + Halpha_s[,k,i] 
       } else {
-        mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,1] + Halpha_s[,k,i] 
+        mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t[i,1] + Halpha_s[,k,i] 
       }
       
       Q <- exp(-d_knots/lambda[i])
@@ -613,9 +615,9 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
         mu_g_idx = seq(t, N*T, by=T)
         if (mu0){
           Halpha_t[,(k-1)*(T-1) + t-1,i] = q_Qinv %*% alpha_t[i,] 
-          mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
+          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
         } else {
-          mu_g[mu_g_idx,k,i] = mu[i] + mu_t[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
         }
         
       }
@@ -623,7 +625,7 @@ build_mu_g <- function(post, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0, 
   }
   
   mu_t = get_mut(post, W)
-  mu   = get_mu(post, W)
+  #mu   = get_mu(post, W)
   
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
