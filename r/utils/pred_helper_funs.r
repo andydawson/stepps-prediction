@@ -185,6 +185,8 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
     alpha_s_cols = seq(alpha_s_start + k - 1, alpha_s_start + N_knots*W - 1, by=W)
 #     col_names[alpha_s_cols]
     alpha_s = post[,1,alpha_s_cols]
+
+    alpha_s_t = t(post[,1,alpha_s_cols])
     
     C_s <- exp(-d_knots/rho[k])
     c_s <- exp(-d_inter/rho[k])
@@ -200,10 +202,21 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
      
       if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}	      
 
+      ts <- proc.time()  
+      
       # t=1
       mu_g_idx = seq(1, N*T, by=T)
       
+      t1 <- proc.time()
       Halpha_s[,k,i] = cs_Csinv %*% alpha_s[i,]
+      t2 <- proc.time()
+      Halpha_s[,k,i] = cs_Csinv %*% alpha_s_t[,i]
+      t3 <- proc.time()
+      print("OLD mult : ")
+      print(t2-t1)
+      print("NEW mult : ")
+      print(t3-t2)
+      
       
       if (mu0){
         mu_g[mu_g_idx,k,i] = mu[i,k] + Halpha_s[,k,i] 
@@ -232,11 +245,13 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
         }
         
       }
+
+      te <- proc.time()
+      print("Single iteration:")
+      print(te-ts)
+    
     }
   }
-  
-  #mu_t = get_mut(post, W)
-  #mu   = get_mu(post, W)
   
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
