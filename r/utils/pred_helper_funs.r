@@ -249,10 +249,10 @@ write_par_vals <- function(post_dat, taxa, subDir, N_pars){
   # sink(sprintf('%s/%s/summary.txt', wd, path_figs1), type='output')
   sink(sprintf('%s/summary.txt', subDir), type='output')
   print('The taxa modelled are:')
-  taxa
+  print(taxa)
   cat('\n')
   print('Summary of posterior parameter vals:')
-  get_quants(post, N_pars)
+  print(get_quants(post, N_pars))
   sink()
   
 }
@@ -1448,7 +1448,7 @@ get_quants <- function(post, npars){
   
 #   quants <- colMeans(post[,1,1:npars])
   
-  quants <- apply(post[,1,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975)))
+  quants <- t(apply(post[,1,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975))))
   
 #   quants <- cbind(summary(fit)$summary[,'mean'][1:npars],
 #                   summary(fit)$summary[,'2.5%'][1:(npars)],
