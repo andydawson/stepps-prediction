@@ -45,7 +45,7 @@ cppFunction('
     //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
     NumericVector Halpha(N, 1);
 
-    Halpha = H * alpha    
+    Halpha = H * alpha;    
 
 return Halpha;
   }
