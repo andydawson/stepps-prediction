@@ -43,9 +43,12 @@ return r;
 cppFunction('
   NumericMatrix mat_vec_mult(int N, int N_knots, NumericMatrix H, NumericVector alpha) {
     //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
-    NumericMatrix Halpha(N,1);
-
-    Halpha = H * alpha;    
+    NumericVector Halpha(N);
+    
+    for (int i = 0; i<N; i++)
+        Halpha(i) = 0;
+      for (int j = 0; j<N_knots; j++)
+        Halpha(i) += H(i,j) * alpha(j);    
 
 return Halpha;
   }
