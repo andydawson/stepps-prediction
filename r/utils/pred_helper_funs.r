@@ -1446,10 +1446,7 @@ split_mi <- function(meta){
 
 get_quants <- function(post, npars){
   
-#   col_names  = colnames(post[,1,])
-#   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
-  
-  quants <- colMeans(post[,1,1:npars])
+#   quants <- colMeans(post[,1,1:npars])
   
   quants <- apply(post[,1,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975)))
   
