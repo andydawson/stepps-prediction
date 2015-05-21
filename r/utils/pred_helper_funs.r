@@ -22,16 +22,18 @@ cppFunction('
   }
 ', verbose=TRUE)
 
+# r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
 # additive log_ratio transformation
 cppFunction('
   NumericMatrix sum2one_constraint(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
+    std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
     NumericMatrix r(N*T, K);
     for (int k = 0; k<(K-1); k++)
       for (int j = 0; j<N*T; j++)
         r(j,k) = exp(g(j,k))/(1+sum_exp_g(j));
 
     for (int j = 0; j<N*T; j++)
-      r(j,K) = 1.0 / (1 + sum_exp_g[j]);
+      r(j,K-1) = 1.0 / (1 + sum_exp_g[j]);
    
 return r;
   }
