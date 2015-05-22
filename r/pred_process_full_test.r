@@ -11,44 +11,12 @@ source('r/read_stanbin.r')
 
 # where to put the figures
 subDir <- paste("figures/", suff_fit, sep='')
-save_plots = TRUE
-suff = ''
-
-mu0        = TRUE
-od         = TRUE
-bt         = TRUE
-mpp        = TRUE
-mut        = FALSE
-save_plots = TRUE
 
 create_figure_path(subDir)
 
 load(paste('r/dump/', suff_dat, '.rdata', sep=''))
 
-#load_output <- function(suff_fit){
-if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
-#   fname = sprintf('output/%s.csv', suff_fit)
-#   fname = sprintf('output/%s.csv', suff_fit)
-#   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
-#   fit = read_stan_csv(fname)
-#   post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
-#   save(post, file=paste0('output/', suff_fit,'.rdata'))
-#   rm(fit)
-  fname     = sprintf('output/%s.bin', suff_fit)
-  object    = read_stanbin(fname) 
-  samples   = data.frame(object$samples[,5:ncol(object$samples)], object$samples[,1])
-  post      = array(0, c(nrow(samples), 1, ncol(samples)))   
-  post[,1,] = as.matrix(samples) 
-  dimnames(post)[[3]] = colnames(samples)
-  
-  save(post, file=paste0('output/', suff_fit,'.rdata'))
-} else {
-  load(paste0('output/', suff_fit,'.rdata'))
-}
-
 W = K-1
-
-# summary(fit)$summary # take a while
 
 # for full model
 N_pars = 3*W + 1
