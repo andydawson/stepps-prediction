@@ -127,12 +127,12 @@ dev.off()
 # }
 # dev.off()
 
-mu_t_int = colSums(mu_t[,1,])
-mu_t_int - mu[,1]
+# mu_t_int = colSums(mu_t)
+# mu_t_int[1] - mean(mu[,1])
 
 pdf(file=paste0(subDir, '/compare_mus.pdf'), width=8, height=6)
 for (k in 1:W){
-  mu_t_int = colSums(mu_t[,k,])
+  mu_t_int = rowSums(mu_t[,seq(k, W*(T-1), by=(T-1))])
   par(mfrow=c(2,1))
   plot(mu_t_int, type='l', ylab=paste0('int(mu_t[t, ', k, '])'))
   plot(mu[,k], type='l',  ylab=paste0('mu[', k, ']'), col='black')
@@ -153,9 +153,9 @@ for (i in 1:(N*T)){
   r_mean[i,] = rowSums(r_pred[i,,])/niter
   g_mean[i,] = rowSums(g[i,,])/niter
 }
-
-rm(g)
-rm(r_pred)
+# 
+# rm(g)
+# rm(r_pred)
 
 
 limits = get_limits(centers_pls)
