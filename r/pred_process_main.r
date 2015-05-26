@@ -27,11 +27,11 @@ for (run in runs){
   post_dat = load_stan_output(suff_fit)
   
   process_out = build_r(post_dat, T, K)
-  save(process_out, file=paste0(subDir, '/process_out.rdata'))
+#   save(process_out, file=paste0(subDir, '/process_out.rdata'))
   
-  save(post_dat, rho, eta, T, K, d, d_inter, d_knot, od, mpp, mu0, file='build_mu_g_test.rdata')
+#   save(post_dat, rho, eta, T, K, d, d_inter, d_knot, od, mpp, mu0, file='build_mu_g_test.rdata')
   process_mean = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)  
-  save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
+#   save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
 
   # for full model
   N_pars = 3*(K-1) + 1
@@ -57,6 +57,6 @@ for (run in runs){
     summary_diff_g_mug[k,] = quantile(abs(as.vector(diff_g_mug[,k,])), probs=c(0.025, 0.5, 0.975))
   }
   
-  #   source('r/pred_plot.r')
+    source('r/pred_plot.r')
   
 }
