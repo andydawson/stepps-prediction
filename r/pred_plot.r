@@ -1,52 +1,32 @@
-library(Rcpp)
-library(inline)
-library(ggplot2)
-library(rstan)
-library(reshape)
-library(fields)
-
-source('r/utils/pred_plot_funs.r')
-source('r/utils/pred_helper_funs.r')
-# source('r/read_stanbin.r')
-
-# where to put the figures
-subDir <- paste("figures/", suff_fit, sep='')
-save_plots = TRUE
-suff = ''
-
-mu0        = TRUE
-od         = TRUE
-bt         = TRUE
-mpp        = TRUE
-mut        = FALSE
-save_plots = TRUE
-
-create_figure_path(subDir)
-
-load(paste('r/dump/', suff_dat, '.rdata', sep=''))
-
-# if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
-#   #   fname = sprintf('output/%s.csv', suff_fit)
-#   #   fname = sprintf('output/%s.csv', suff_fit)
-#   #   system(sprintf('r/fixup.pl %s', fname)) # is this broken now?
-#   #   fit = read_stan_csv(fname)
-#   #   post = rstan::extract(fit, permuted=FALSE, inc_warmup=FALSE)
-#   #   save(post, file=paste0('output/', suff_fit,'.rdata'))
-#   #   rm(fit)
-#   fname   = sprintf('output/%s.bin', suff_fit)
-#   object  = read_stanbin(fname)
-#   #   samples = cbind(object$samples[,5:ncol(object$samples)], object$samples[,1])
-#   #post = array(0, c(nrow(object$samples), 1, ncol(object$samples)-5))   
-#   samples = data.frame(object$samples[,5:ncol(object$samples)], object$samples[,1])
-#   #   colnames(samples) = colnames(object$samples cbind(colnames(object$samples[,5:ncol(object$samples)]), name(object$samples[,1])))
-#   post = array(0, c(nrow(samples), 1, ncol(samples)))   
-#   post[,1,] = as.matrix(samples) 
-#   dimnames(post)[[3]] = colnames(samples)
-# } else {
-#   load(paste0('output/', suff_fit,'.rdata'))
-# }
-
-W = K-1
+# library(Rcpp)
+# library(inline)
+# library(ggplot2)
+# library(rstan)
+# library(reshape)
+# library(fields)
+# 
+# source('r/utils/pred_plot_funs.r')
+# source('r/utils/pred_helper_funs.r')
+# # source('r/read_stanbin.r')
+# 
+# # where to put the figures
+# subDir <- paste("figures/", suff_fit, sep='')
+# save_plots = TRUE
+# suff = ''
+# 
+# mu0        = TRUE
+# od         = TRUE
+# bt         = TRUE
+# mpp        = TRUE
+# mut        = FALSE
+# save_plots = TRUE
+# 
+# create_figure_path(subDir)
+# 
+# load(paste('r/dump/', suff_dat, '.rdata', sep=''))
+# 
+# 
+# W = K-1
 
 # for full model
 N_pars = 3*W + 1
@@ -55,12 +35,12 @@ N_pars = 3*W + 1
 ###############################################################################################################
 # chunk: load processed output
 ###############################################################################################################
-load(file=paste0(subDir, '/process_out.rdata'))
+# load(file=paste0(subDir, '/process_out.rdata'))
 r_pred = process_out$r
 g      = process_out$g
 rm(process_out)
 
-load(file=paste0(subDir, '/process_mean.rdata'))
+# load(file=paste0(subDir, '/process_mean.rdata'))
 mu_g     = process_mean$mu_g
 mu_t     = process_mean$mu_t
 mu       = process_mean$mu
