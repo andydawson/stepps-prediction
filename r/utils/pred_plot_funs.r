@@ -292,7 +292,7 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
   p <- add_map_albers(p, map_data=us.fort, limits)
   p <- p + facet_grid(time~taxon)
   p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
-  print(p)
+#   print(p)
   Sys.sleep(2)
   if (save_plots){
     ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
@@ -353,7 +353,7 @@ plot_pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N,
 #   p <- theme_clean(p) + theme(strip.text.x = element_blank(), strip.text.y = element_text(size = rel(1.5)))
   p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
   #theme(strip.text.y = element_text(size = rel(1.5)), strip.text.x = element_text(size = rel(1.5)))
-  print(p)
+#   print(p)
   Sys.sleep(2)
   if (save_plots){
     ggsave(file=paste(fpath, '/veg_maps_props_binned_', suff, '.pdf', sep=''), scale=1, width=12, height=12)

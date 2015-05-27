@@ -875,7 +875,7 @@ public:
 	  if (var_g[k][i] <= 1.e-8) {
 	    var_g[k][i] = 0.0;
 	  }
-	  var_g[k][i] += 1;
+	  var_g[k][i] += 0.1;//1;
           lp_thrd[k] += normal_log_double(g[k][i], mu_g[k][i], sqrt(var_g[k][i]), 0);
       	}
 

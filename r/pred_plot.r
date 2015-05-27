@@ -26,10 +26,10 @@
 # load(paste('r/dump/', suff_dat, '.rdata', sep=''))
 # 
 # 
-# W = K-1
+W = K-1
 
 # for full model
-N_pars = 3*W + 1
+N_pars = 3*(K-1) + 1
 
 
 ###############################################################################################################
@@ -38,7 +38,7 @@ N_pars = 3*W + 1
 # load(file=paste0(subDir, '/process_out.rdata'))
 r_pred = process_out$r
 g      = process_out$g
-rm(process_out)
+# rm(process_out)
 
 # load(file=paste0(subDir, '/process_mean.rdata'))
 mu_g     = process_mean$mu_g
@@ -46,7 +46,7 @@ mu_t     = process_mean$mu_t
 mu       = process_mean$mu
 Halpha_t = process_mean$Halpha_t
 Halpha_s = process_mean$Halpha_s
-rm(process_mean)
+# rm(process_mean)
 
 niter = dim(g)[3]
 
@@ -127,12 +127,12 @@ dev.off()
 # }
 # dev.off()
 
-mu_t_int = colSums(mu_t[,1,])
-mu_t_int - mu[,1]
+# mu_t_int = colSums(mu_t)
+# mu_t_int[1] - mean(mu[,1])
 
 pdf(file=paste0(subDir, '/compare_mus.pdf'), width=8, height=6)
 for (k in 1:W){
-  mu_t_int = colSums(mu_t[,k,])
+  mu_t_int = rowSums(mu_t[,seq(k, W*(T-1), by=(T-1))])
   par(mfrow=c(2,1))
   plot(mu_t_int, type='l', ylab=paste0('int(mu_t[t, ', k, '])'))
   plot(mu[,k], type='l',  ylab=paste0('mu[', k, ']'), col='black')
@@ -153,9 +153,9 @@ for (i in 1:(N*T)){
   r_mean[i,] = rowSums(r_pred[i,,])/niter
   g_mean[i,] = rowSums(g[i,,])/niter
 }
-
-rm(g)
-rm(r_pred)
+# 
+# rm(g)
+# rm(r_pred)
 
 
 limits = get_limits(centers_pls)
