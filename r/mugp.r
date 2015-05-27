@@ -136,7 +136,7 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
   lambda = post[,1,which(par_names == 'lambda')]
 
   res = foreach (k = 1:W) %dopar% {
-  #for (k in 1:W) {
+  for (k in 1:W) {
 
     if (mu0) {
       mut_cols = seq(k, (T-1)*W, by=W)
