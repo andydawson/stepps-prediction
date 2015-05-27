@@ -29,7 +29,7 @@ for (run in runs){
   process_out = build_r(post_dat, T, K)
   save(process_out, file=paste0(subDir, '/process_out.rdata'))
   
-  save(post_dat, rho, eta, T, K, d, d_inter, d_knot, od, mpp, mu0, file='build_mu_g_test.rdata')
+#   save(post_dat, rho, eta, T, K, d, d_inter, d_knot, od, mpp, mu0, file='build_mu_g_test.rdata')
   process_mean = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)  
   save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
 
