@@ -136,7 +136,7 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
   lambda = post[,1,which(par_names == 'lambda')]
 
   res = foreach (k = 1:W) %dopar% {
-  for (k in 1:W) {
+#   for (k in 1:W) {
 
     if (mu0) {
       mut_cols = seq(k, (T-1)*W, by=W)
@@ -160,7 +160,6 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
 
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
-
 # ## lastly via OpenMP for parallel use
 # build_mu_g_omp <- '
 #    // assign to C++ vector
