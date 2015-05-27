@@ -85,9 +85,9 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, rho, sigma, lambda, alpha_s, alpha_t, 
 
       if (mu0) {
         Halpha_t[,t-1,i] = q_Qinv %*% alpha_t[,i,t-1]
-        mu_g[,i] = mu_k[i] + mu_t_k[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,t-1,i]
+        mu_g[,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,t-1,i]
       } else {
-        mu_g[,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[,i,t-1]
+        mu_g[,i] = mu_k[i] + mu_t_k[i,t] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[,i,t-1]
       }
     }
   }
