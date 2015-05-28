@@ -190,7 +190,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
     lambda = post[,1,which(par_names == 'lambda')[k]]
     
     if (mu0){
-      mut_cols = seq(k, (T-1)*W) 
+      mut_cols = seq(k, (T-1)*W, by=W) 
     } else {
       mut_cols = seq(k, T*W, by=W)
     }
