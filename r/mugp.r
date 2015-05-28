@@ -65,7 +65,7 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
     Halpha_t = array(NA, dim=c(N, T, niter))
   }
 
-  mu_g_idx = seq(1, N*T, by=T)
+ 
   
   for (i in 1:niter) {
 
@@ -73,6 +73,7 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
 
     Halpha_s[,i] = cs_Csinv %*% alpha_s[i,]
 
+    mu_g_idx = seq(1, N*T, by=T)
     if (mu0) {
       mu_g_k[mu_g_idx,i] = mu_k[i] + Halpha_s[,i]
     } else {
