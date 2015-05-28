@@ -164,7 +164,7 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
   }
   # XXX: unpack res...
   
-  for (k in 1:2){#){
+  for (k in 1:W){
     mu_g[,k,] = res[[k]]$mu_g_k
     Halpha_s[,k,] = res[[k]]$Halpha_s
     Halpha_t[,((k-1)*(T-1)+1):((k-1)*(T-1)+(T-1)) ,] = res[[k]]$Halpha_t
