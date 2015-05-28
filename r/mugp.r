@@ -141,7 +141,7 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
   sigma  = post[,1,which(par_names == 'sigma')]
   lambda = post[,1,which(par_names == 'lambda')]
 
-  res = foreach (k = 1:2) %dopar% {
+  res = foreach (k = 1:W) %dopar% {
   #for (k in 1:W) {
 
     if (mu0) {

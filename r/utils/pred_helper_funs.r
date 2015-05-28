@@ -182,7 +182,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
   mu   = post[,1,which(par_names == 'mu')]
   mu_t = post[,1,which(par_names == 'mu_t')]
 
-  for (k in 1:2){#W){
+  for (k in 1:W){
     print(k)
     
     #mu     = post[,1,which(par_names == 'mu')[k]]
