@@ -30,9 +30,20 @@ for (run in runs){
 #   save(process_out, file=paste0(subDir, '/process_out.rdata'))
   
 #   save(post_dat, rho, eta, T, K, d, d_inter, d_knot, od, mpp, mu0, file='build_mu_g_test.rdata')
-  process_mean = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)  
+  t1 <- proc.time()
+  process_mean = build_mu_g_serial(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)  
 #   save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
-
+  t2 <- proc.time()
+  process_mean_new = build_mu_g_parallel(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)
+  
+  t3 <- proc.time()
+  process_mean_rcpp = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0) 
+  
+  t4 <- proc.time()
+#   print(paste0("OLD build_mu_g :", t2[3]-t1[3]))
+#   print(paste0("NEW build_mu_g :", t3[3]-t2[3]))
+  print(paste0("NEW build_mu_g :", t4[3]-t3[3]))
+    
   # for full model
   N_pars = 3*(K-1) + 1
   write_par_vals(post_dat, taxa, subDir, N_pars)

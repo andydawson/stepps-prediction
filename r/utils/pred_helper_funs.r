@@ -138,7 +138,7 @@ build_r <- function(post_dat, T, K){
   return(list(r=r, g=g))
 }
 
-build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0){
+build_mu_g_serial <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0){
   
   post      = post_dat$post
   par_names = post_dat$par_names
