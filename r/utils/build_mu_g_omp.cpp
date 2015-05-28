@@ -42,7 +42,7 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
   mat P(P_vec.begin(), dim_P[0], dim_P[1], false);
 
   int const W = K-1;
-  int const niter = dim_sigma[0];
+  int const niter = 10;// dim_sigma[0];
   int const N = dim_d_inter[0];
   int const N_knots = dim_d_inter[1];
 
@@ -95,7 +95,7 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
         alpha_s(v, i) = alpha_s_vec[(k*N_knots + v)*niter + i];
       }
     }
-    //std::cout<< "alpha_s_vec : " << alpha_s_vec << std::endl;
+    std::cout<< "alpha_s : " << alpha_s << std::endl;
 
     cube alpha_t(N_knots, niter, T-1);
     for (int t=1; t<T; t++) {
