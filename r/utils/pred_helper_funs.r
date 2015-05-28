@@ -212,15 +212,16 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
     } else {
       cs_Csinv = c_s %*% C_s_inv
     }
-       
+      
+    # t=1
+    mu_g_idx = seq(1, N*T, by=T)
+
     for (i in 1:niter){
      
       if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}	      
 
       ts <- proc.time()  
-      
-      # t=1
-      mu_g_idx = seq(1, N*T, by=T)
+     
       
 #       t1 <- proc.time()
       Halpha_s[,k,i] = cs_Csinv %*% alpha_s[i,]

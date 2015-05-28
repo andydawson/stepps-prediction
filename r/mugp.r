@@ -1,5 +1,5 @@
-# library(doMC)
-# registerDoMC(4)
+library(doMC)
+registerDoMC(4)
 
     # c++: vector<vector_d> alpha_t(W*(T-1));
     #
@@ -40,9 +40,9 @@
 
 
 # build_mu_g_k(k, mu[,k], mu_t[,mut_cols], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
-# mu_k=mu[,k]
-# mu_t_k=mu_t[,mut_cols]
-# lambda_k=lambda[,k]
+mu_k=mu[,k]
+mu_t_k=mu_t[,mut_cols]
+lambda_k=lambda[,k]
 
 build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter) {
 
@@ -65,7 +65,8 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
     Halpha_t = array(NA, dim=c(N, T, niter))
   }
 
-
+  mu_g_idx = seq(1, N*T, by=T)
+  
   for (i in 1:niter) {
 
     if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
@@ -73,9 +74,9 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
     Halpha_s[,i] = cs_Csinv %*% alpha_s[i,]
 
     if (mu0) {
-      mu_g_k[,i] = mu_k[i] + Halpha_s[,i]
+      mu_g_k[mu_g_idx,i] = mu_k[i] + Halpha_s[,i]
     } else {
-      mu_g_k[,i] = mu_k[i] + mu_t_k[i,1] + Halpha_s[,i]
+      mu_g_k[mu_g_idx,i] = mu_k[i] + mu_t_k[i,1] + Halpha_s[,i]
     }
 
     Q <- exp(-d_knots/lambda_k[i])
@@ -86,11 +87,12 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
 
     for (t in 2:T){
 
+      mu_g_idx = seq(t, N*T, by=T)
       if (mu0) {
         Halpha_t[,t-1,i] = q_Qinv %*% alpha_t[,i,t-1]
-        mu_g_k[,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,t-1,i]
+        mu_g_k[mu_g_idx,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,t-1,i]
       } else {
-        mu_g_k[,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[,i,t-1]
+        mu_g_k[mu_g_idx,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[,i,t-1]
       }
     }
   }
@@ -157,10 +159,17 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
       }
     }
 
-    build_mu_g_k(k, mu[,k], mu_t[,mut_cols], rho, sigma[,k], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
+    build_mu_g_k(k, mu[,k], mu_t[,mut_cols], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
   }
   # XXX: unpack res...
-
+  
+  for (k in 1:2){#){
+    mu_g[,k,] = res[[k]]$mu_g_k
+    Halpha_s[,k,] = res[[k]]$Halpha_s
+    Halpha_t[,((k-1)*(T-1)+1):((k-1)*(T-1)+(T-1)) ,] = res[[k]]$Halpha_t
+  }
+  
+  #Halpha_t: k is slow, t fast
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
