@@ -39,10 +39,10 @@ registerDoMC(4)
     #
 
 
-# build_mu_g_k(k, mu[,k], mu_t[,mut_cols], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
-mu_k=mu[,k]
-mu_t_k=mu_t[,mut_cols]
-lambda_k=lambda[,k]
+# # build_mu_g_k(k, mu[,k], mu_t[,mut_cols], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
+# mu_k=mu[,k]
+# mu_t_k=mu_t[,mut_cols]
+# lambda_k=lambda[,k]
 
 build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter) {
 
