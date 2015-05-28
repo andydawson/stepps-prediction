@@ -182,7 +182,7 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
   mu   = post[,1,which(par_names == 'mu')]
   mu_t = post[,1,which(par_names == 'mu_t')]
 
-  for (k in 1:W){
+  for (k in 1:2){#W){
     print(k)
     
     #mu     = post[,1,which(par_names == 'mu')[k]]
@@ -254,11 +254,11 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
         mu_g_idx = seq(t, N*T, by=T)
         if (mu0){
           Halpha_t[,(k-1)*(T-1) + t-1,i] = q_Qinv %*% alpha_t[i,] 
-          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
+          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,(k-1)*(T-1) + t-1,i] #q_Qinv %*% alpha_t[i,] 
         } else {
           
 #           t1 <- proc.time()
-          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
+          mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[i,] 
 #           t2 <- proc.time()
 #           mu_g[mu_g_idx,k,i] = mu[i,k] + mu_t_k[i,t-1] + mat_vec_mult(N, N_knots, cs_Csinv, alpha_s[i,]) + mat_vec_mult(N, N_knots, q_Qinv, alpha_t[i,] )
 #         
