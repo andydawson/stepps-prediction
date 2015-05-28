@@ -95,7 +95,7 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
         alpha_s(v, i) = alpha_s_vec[(k*N_knots + v)*niter + i];
       }
     }
-    std::cout<< "alpha_s_vec : " << alpha_s_vec << std::endl;
+    //std::cout<< "alpha_s_vec : " << alpha_s_vec << std::endl;
 
     cube alpha_t(N_knots, niter, T-1);
     for (int t=1; t<T; t++) {
