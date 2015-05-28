@@ -138,7 +138,7 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
   sigma  = post[,1,which(par_names == 'sigma')]
   lambda = post[,1,which(par_names == 'lambda')]
 
-  res = foreach (k = 1:W) %dopar% {
+  res = foreach (k = 1:2) %dopar% {
   #for (k in 1:W) {
 
     if (mu0) {
@@ -164,19 +164,19 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
-## lastly via OpenMP for parallel use
-build_mu_g_omp <- '
-   // assign to C++ vector
-   std::vector<double> x = Rcpp::as<std::vector< double > >(xs);
-   size_t n = x.size();
-#pragma omp parallel for shared(x, n)
-   for (size_t i=0; i<n; i++) {
-       x[i] = ::log(x[i]);
-   }
-   return Rcpp::wrap(x);
-'
-
-settings <- getPlugin("Rcpp")
-settings$env$PKG_CXXFLAGS <- paste('-fopenmp', settings$env$PKG_CXXFLAGS)
-settings$env$PKG_LIBS <- paste('-fopenmp -lgomp', settings$env$PKG_LIBS)
-funOpenMP <- cxxfunction(signature(xs="numeric"), body=openMPCode, plugin="Rcpp", settings=settings)
+# ## lastly via OpenMP for parallel use
+# build_mu_g_omp <- '
+#    // assign to C++ vector
+#    std::vector<double> x = Rcpp::as<std::vector< double > >(xs);
+#    size_t n = x.size();
+# #pragma omp parallel for shared(x, n)
+#    for (size_t i=0; i<n; i++) {
+#        x[i] = ::log(x[i]);
+#    }
+#    return Rcpp::wrap(x);
+# '
+# 
+# settings <- getPlugin("Rcpp")
+# settings$env$PKG_CXXFLAGS <- paste('-fopenmp', settings$env$PKG_CXXFLAGS)
+# settings$env$PKG_LIBS <- paste('-fopenmp -lgomp', settings$env$PKG_LIBS)
+# funOpenMP <- cxxfunction(signature(xs="numeric"), body=openMPCode, plugin="Rcpp", settings=settings)
