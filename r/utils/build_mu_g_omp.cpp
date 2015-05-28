@@ -56,8 +56,9 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
     throw std::runtime_error("mu0==0 not handled yet");
   }
 
-  #pragma omp parallel for
-  for (int k=0; k<W; k++) {
+  //#pragma omp parallel for
+  //for (int k=0; k<W; k++) {
+  for (int k=0; k<1; k++) {
     double rho_inv = 1.0 / rho[k];
     mat C_s = exp(-rho_inv * d_knots);
     mat c_s = exp(-rho_inv * d_inter);
@@ -94,6 +95,7 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
         alpha_s(v, i) = alpha_s_vec[(k*N_knots + v)*niter + i];
       }
     }
+    std::cout<< "alpha_s_1 : " << alpha_s << std::endl;
 
     cube alpha_t(N_knots, niter, T-1);
     for (int t=1; t<T; t++) {
