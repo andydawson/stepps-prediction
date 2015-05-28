@@ -39,7 +39,10 @@
     #
 
 
-# build_mu_g_k(k, mu[,k], mu_t[,mut_cols], rho, sigma[,k], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
+# build_mu_g_k(k, mu[,k], mu_t[,mut_cols], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
+# mu_k=mu[,k]
+# mu_t_k=mu_t[,mut_cols]
+# lambda_k=lambda[,k]
 
 build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter) {
 
@@ -92,7 +95,7 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
     }
   }
 
-  return(list(mu_g_k=mu_g_k, Halpha_s_k=Halpha_s_k, Halpha_t_k=Halpha_t_k))
+  return(list(mu_g_k=mu_g_k, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
 build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0) {
@@ -150,7 +153,7 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
     # XXX: AWKWARD!
     for (j in 1:N_knots) {
       for (t in 2:T) {
-        alpha_t[j,,t-1] = post[,1, alpha_t_start + j*(T-1)*W + k*(T-1) + t-1 - 1]
+        alpha_t[j,,t-1] = post[,1, alpha_t_start + (j-1)*(T-1)*W + (k-1)*(T-1) + t-1 - 1]
       }
     }
 
