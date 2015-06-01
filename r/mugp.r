@@ -1,5 +1,5 @@
 library(doMC)
-registerDoMC(4)
+registerDoMC(1)
 
     # c++: vector<vector_d> alpha_t(W*(T-1));
     #

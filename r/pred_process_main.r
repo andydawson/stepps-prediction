@@ -8,6 +8,8 @@ library(fields)
 source('r/utils/pred_plot_funs.r')
 source('r/utils/pred_helper_funs.r')
 source('r/read_stanbin.r')
+source('r/utils/build_mu_g.r')
+source('r/mugp.r')
 
 # edit this file to process different runs
 source('r/runs.r')
@@ -40,9 +42,9 @@ for (run in runs){
   process_mean_rcpp = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0) 
   
   t4 <- proc.time()
-#   print(paste0("OLD build_mu_g :", t2[3]-t1[3]))
-#   print(paste0("NEW build_mu_g :", t3[3]-t2[3]))
-  print(paste0("NEW build_mu_g :", t4[3]-t3[3]))
+#   print(paste0("Serial build_mu_g :", t2[3]-t1[3]))
+  print(paste0("doMC build_mu_g :", t3[3]-t2[3]))
+  print(paste0("Rcpp build_mu_g :", t4[3]-t3[3]))
     
   # for full model
   N_pars = 3*(K-1) + 1
