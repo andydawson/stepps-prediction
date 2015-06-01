@@ -182,7 +182,8 @@ build_mu_g_serial <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od,
   mu   = post[,1,which(par_names == 'mu')]
   mu_t = post[,1,which(par_names == 'mu_t')]
 
-  for (k in 1:W){
+#  for (k in 1:W){
+  for (k in 1:2){
     print(k)
     
     #mu     = post[,1,which(par_names == 'mu')[k]]
@@ -245,7 +246,10 @@ build_mu_g_serial <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od,
       Q_inv = chol2inv(chol(Q))
       
       q_Qinv = q %*% Q_inv
-      
+      if (i == 4) {
+            print((cs_Csinv %*% alpha_s[i,])[1:10])
+}	    
+
       for (t in 2:T){
         
         alpha_t_cols = seq(alpha_t_start + (k-1)*(T-1) + t-1 - 1, alpha_t_start + N_knots*W*(T-1) - 1, by=W*(T-1))

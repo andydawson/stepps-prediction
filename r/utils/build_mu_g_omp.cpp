@@ -42,9 +42,14 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
   mat P(P_vec.begin(), dim_P[0], dim_P[1], false);
 
   int const W = K-1;
-  int const niter = 10;// dim_sigma[0];
+  int const niter = dim_sigma[0];
   int const N = dim_d_inter[0];
   int const N_knots = dim_d_inter[1];
+
+  // std::cout << "W " << W << std::endl;
+  // std::cout << "N " << N << std::endl;
+  // std::cout << "N_knots " << N_knots << std::endl;
+  // std::cout << "niter " << niter << std::endl;
 
   cube mu_g(N*T, W, niter);
   cube Halpha_s(N, W, niter);
@@ -57,8 +62,8 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
   }
 
   //#pragma omp parallel for
-  //for (int k=0; k<W; k++) {
-  for (int k=0; k<1; k++) {
+  for (int k=0; k<W; k++) {
+    //for (int k=0; k<1; k++) {
     double rho_inv = 1.0 / rho[k];
     mat C_s = exp(-rho_inv * d_knots);
     mat c_s = exp(-rho_inv * d_inter);
@@ -76,7 +81,8 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
       mu_t_k.resize(niter, T-1);
       for (int t=1; t<T; t++) {
 	for (int i=0; i<niter; i++) {
-	  mu_t_k(i, t-1) = mu_t_vec[k*T*W + (t-1)*W + i];
+	  // mu_t_k(i, t-1) = mu_t_vec[k*(T-1)*niter + (t-1)*niter + i];
+	  mu_t_k(i, t-1) = mu_t_vec[(t-1)*W*niter + k*niter + i];
 	}
       }
     } else {
@@ -89,19 +95,24 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
       // }
     }
 
+    // for (int t=1; t<3; t++) {
+    //   for (int i=0; i<3; i++) {
+    // 	std::cout << "k " << k << " t " << t << " i " << i << " " << mu_t_k(i, t-1) << std::endl;
+    //   }
+    // }
+
     mat alpha_s(N_knots, niter);
     for (int i=0; i<niter; i++) {
       for (int v=0; v<N_knots; v++) {
-        alpha_s(v, i) = alpha_s_vec[(k*N_knots + v)*niter + i];
+        alpha_s(v, i) = alpha_s_vec[v*W*niter + k*niter + i];
       }
     }
-    std::cout<< "alpha_s : " << alpha_s << std::endl;
-
+    
     cube alpha_t(N_knots, niter, T-1);
     for (int t=1; t<T; t++) {
       for (int i=0; i<niter; i++) {
         for (int v=0; v<N_knots; v++) {
-          alpha_t(v, i, t-1) = alpha_t_vec[((k*(T-1) + t-1)*N_knots + v)*niter + i];
+          alpha_t(v, i, t-1) = alpha_t_vec[v*W*(T-1)*niter + k*(T-1)*niter + (t-1)*niter + i];
         }
       }
     }
@@ -127,12 +138,26 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
       mat Q_inv = inv(Q);
       mat q_Qinv = q * Q_inv;
 
+      vec cs_Csinv_alpha_s = cs_Csinv * alpha_s.col(i);
+      // if (i == 3) {
+      // 	for (int j=0; j<10; j++) {
+      // 	  std::cout << k << " " << j << " " << cs_Csinv_alpha_s(j) << std::endl;
+      // 	}
+      // }
+
+    
+      // if ((i >995) && (i<1000)) {
+      // 	for (int t=1; t<3; t++) {
+      // 	  // std::cout << i << " " << k << " " << mu(i,k) << std::endl;
+      // 	  std::cout << k << " " << i << " " << t-1 << " " << mu_t_k(i,t-1) << std::endl;
+      // 	}
+      //  }
+
       for (int t=1; t<T; t++) {
 
         if (mu0) {
 	  vec alpha_t__ = alpha_t(0, i, t-1, size(N_knots, 1, 1));
           Halpha_t(0, k*(T-1) + t-1, i, size(N, 1, 1)) = q_Qinv * alpha_t__;
-	  vec cs_Csinv_alpha_s = cs_Csinv * alpha_s.col(i);
 	  for (int j=0; j<N; j++) {
 	    mu_g(j*T+t, k, i) = mu(i,k) + mu_t_k(i, t-1) + cs_Csinv_alpha_s(j) + Halpha_t(j, k*(T-1) + t-1, i);
 	  }
@@ -149,6 +174,8 @@ Rcpp::List build_mu_g_omp(NumericVector rho,
   }
 
   return Rcpp::List::create(Rcpp::Named("mu_g") = mu_g,
+			    Rcpp::Named("mu") = mu,
+			    //			    Rcpp::Named("mu_t") = mu_t,
 			    Rcpp::Named("Halpha_s") = Halpha_s,
 			    Rcpp::Named("Halpha_t") = Halpha_t);
 

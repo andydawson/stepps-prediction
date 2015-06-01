@@ -26,5 +26,9 @@ build_mu_g <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, m
   alpha_s = post[,1,which(par_names == 'alpha_s')]
   alpha_t = post[,1,which(par_names == 'alpha_t')]
 
-  build_mu_g_omp(rho, sigma, lambda, mu, mu_t, alpha_s, alpha_t, d_knots, d_inter, T, K, od, mu0, P)
+  mu_g_out = build_mu_g_omp(rho, sigma, lambda, mu, mu_t, alpha_s, alpha_t, d_knots, d_inter, T, K, od, mu0, P)
+
+  mu_g_out$mu_t = mu_t
+
+  return(mu_g_out)
 }

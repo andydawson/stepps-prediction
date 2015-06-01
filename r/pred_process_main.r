@@ -7,8 +7,8 @@ library(fields)
 
 source('r/utils/pred_plot_funs.r')
 source('r/utils/pred_helper_funs.r')
-source('r/read_stanbin.r')
 source('r/utils/build_mu_g.r')
+source('r/read_stanbin.r')
 source('r/mugp.r')
 
 # edit this file to process different runs
@@ -29,24 +29,31 @@ for (run in runs){
   post_dat = load_stan_output(suff_fit)
   
   process_out = build_r(post_dat, T, K)
+  print('Built r')
+
 #   save(process_out, file=paste0(subDir, '/process_out.rdata'))
   
-#   save(post_dat, rho, eta, T, K, d, d_inter, d_knot, od, mpp, mu0, file='build_mu_g_test.rdata')
-  t1 <- proc.time()
-  process_mean = build_mu_g_serial(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)  
-#   save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
-  t2 <- proc.time()
-  process_mean_new = build_mu_g_parallel(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)
+# #   save(post_dat, rho, eta, T, K, d, d_inter, d_knot, od, mpp, mu0, file='build_mu_g_test.rdata')
+#   t1 <- proc.time()
+#   process_mean = build_mu_g_serial(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)  
+# #   save(process_mean, file=paste0(subDir, '/process_mean.rdata'))
+#   t2 <- proc.time()
+#   process_mean_new = build_mu_g_parallel(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0)
   
-  t3 <- proc.time()
-  process_mean_rcpp = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0) 
+#   t3 <- proc.time()
+  # process_mean_rcpp = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0) 
+
+  process_mean = build_mu_g(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0) 
+
+  print('Built mu_g')
   
-  t4 <- proc.time()
-#   print(paste0("Serial build_mu_g :", t2[3]-t1[3]))
-  print(paste0("doMC build_mu_g :", t3[3]-t2[3]))
-  print(paste0("Rcpp build_mu_g :", t4[3]-t3[3]))
+#   t4 <- proc.time()
+# #   print(paste0("OLD build_mu_g :", t2[3]-t1[3]))
+# #   print(paste0("NEW build_mu_g :", t3[3]-t2[3]))
+#   print(paste0("NEW build_mu_g :", t4[3]-t3[3]))
     
   # for full model
+  W = K-1
   N_pars = 3*(K-1) + 1
   write_par_vals(post_dat, taxa, subDir, N_pars)
   
@@ -69,7 +76,10 @@ for (run in runs){
   for (k in 1:(K-1)){
     summary_diff_g_mug[k,] = quantile(abs(as.vector(diff_g_mug[,k,])), probs=c(0.025, 0.5, 0.975))
   }
+
+  summary_diff_g_mug
   
-    source('r/pred_plot.r')
-  
+  print('Assessed nugget')
+
+  source('r/pred_plot.r')
 }
