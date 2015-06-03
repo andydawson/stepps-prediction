@@ -1,5 +1,5 @@
-# library(doMC)
-# registerDoMC(4)
+library(doMC)
+registerDoMC(1)
 
     # c++: vector<vector_d> alpha_t(W*(T-1));
     #
@@ -39,7 +39,10 @@
     #
 
 
-# build_mu_g_k(k, mu[,k], mu_t[,mut_cols], rho, sigma[,k], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
+# # build_mu_g_k(k, mu[,k], mu_t[,mut_cols], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
+# mu_k=mu[,k]
+# mu_t_k=mu_t[,mut_cols]
+# lambda_k=lambda[,k]
 
 build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter) {
 
@@ -62,17 +65,19 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
     Halpha_t = array(NA, dim=c(N, T, niter))
   }
 
-
+ 
+  
   for (i in 1:niter) {
 
     if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
 
     Halpha_s[,i] = cs_Csinv %*% alpha_s[i,]
 
+    mu_g_idx = seq(1, N*T, by=T)
     if (mu0) {
-      mu_g_k[,i] = mu_k[i] + Halpha_s[,i]
+      mu_g_k[mu_g_idx,i] = mu_k[i] + Halpha_s[,i]
     } else {
-      mu_g_k[,i] = mu_k[i] + mu_t_k[i,1] + Halpha_s[,i]
+      mu_g_k[mu_g_idx,i] = mu_k[i] + mu_t_k[i,1] + Halpha_s[,i]
     }
 
     Q <- exp(-d_knots/lambda_k[i])
@@ -83,16 +88,17 @@ build_mu_g_k <- function(k, mu_k, mu_t_k, lambda_k, alpha_s, alpha_t, d_knots, d
 
     for (t in 2:T){
 
+      mu_g_idx = seq(t, N*T, by=T)
       if (mu0) {
         Halpha_t[,t-1,i] = q_Qinv %*% alpha_t[,i,t-1]
-        mu_g_k[,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,t-1,i]
+        mu_g_k[mu_g_idx,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + Halpha_t[,t-1,i]
       } else {
-        mu_g_k[,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[,i,t-1]
+        mu_g_k[mu_g_idx,i] = mu_k[i] + mu_t_k[i,t-1] + cs_Csinv %*% alpha_s[i,] + q_Qinv %*% alpha_t[,i,t-1]
       }
     }
   }
 
-  return(list(mu_g_k=mu_g_k, Halpha_s_k=Halpha_s_k, Halpha_t_k=Halpha_t_k))
+  return(list(mu_g_k=mu_g_k, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
 build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0) {
@@ -150,30 +156,37 @@ build_mu_g_parallel <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, o
     # XXX: AWKWARD!
     for (j in 1:N_knots) {
       for (t in 2:T) {
-        alpha_t[j,,t-1] = post[,1, alpha_t_start + j*(T-1)*W + k*(T-1) + t-1 - 1]
+        alpha_t[j,,t-1] = post[,1, alpha_t_start + (j-1)*(T-1)*W + (k-1)*(T-1) + t-1 - 1]
       }
     }
 
-    build_mu_g_k(k, mu[,k], mu_t[,mut_cols], rho, sigma[,k], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
+    build_mu_g_k(k, mu[,k], mu_t[,mut_cols], lambda[,k], alpha_s, alpha_t, d_knots, d_inter, P, T, W, N, N_knots, od, mu0, niter)
   }
   # XXX: unpack res...
-
+  
+  for (k in 1:W){
+    mu_g[,k,] = res[[k]]$mu_g_k
+    Halpha_s[,k,] = res[[k]]$Halpha_s
+    Halpha_t[,((k-1)*(T-1)+1):((k-1)*(T-1)+(T-1)) ,] = res[[k]]$Halpha_t
+  }
+  
+  #Halpha_t: k is slow, t fast
   return(list(mu_g=mu_g, mu=mu, mu_t=mu_t, Halpha_s=Halpha_s, Halpha_t=Halpha_t))
 }
 
-## lastly via OpenMP for parallel use
-build_mu_g_omp <- '
-   // assign to C++ vector
-   std::vector<double> x = Rcpp::as<std::vector< double > >(xs);
-   size_t n = x.size();
-#pragma omp parallel for shared(x, n)
-   for (size_t i=0; i<n; i++) {
-       x[i] = ::log(x[i]);
-   }
-   return Rcpp::wrap(x);
-'
-
-settings <- getPlugin("Rcpp")
-settings$env$PKG_CXXFLAGS <- paste('-fopenmp', settings$env$PKG_CXXFLAGS)
-settings$env$PKG_LIBS <- paste('-fopenmp -lgomp', settings$env$PKG_LIBS)
-funOpenMP <- cxxfunction(signature(xs="numeric"), body=openMPCode, plugin="Rcpp", settings=settings)
+# ## lastly via OpenMP for parallel use
+# build_mu_g_omp <- '
+#    // assign to C++ vector
+#    std::vector<double> x = Rcpp::as<std::vector< double > >(xs);
+#    size_t n = x.size();
+# #pragma omp parallel for shared(x, n)
+#    for (size_t i=0; i<n; i++) {
+#        x[i] = ::log(x[i]);
+#    }
+#    return Rcpp::wrap(x);
+# '
+# 
+# settings <- getPlugin("Rcpp")
+# settings$env$PKG_CXXFLAGS <- paste('-fopenmp', settings$env$PKG_CXXFLAGS)
+# settings$env$PKG_LIBS <- paste('-fopenmp -lgomp', settings$env$PKG_LIBS)
+# funOpenMP <- cxxfunction(signature(xs="numeric"), body=openMPCode, plugin="Rcpp", settings=settings)

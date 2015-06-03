@@ -295,9 +295,13 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
 #   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
+    fname = paste0(fpath, '/veg_maps_', suff, '.pdf')
+    ggsave(file=fname, scale=1, width=12, height=12)
+    sys_str = paste("pdfcrop", fname, fname, sep=' ')
+    system(sys_str)
     #     dev.off()
   }
+
   return(p)
 }
 
@@ -356,9 +360,10 @@ plot_pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N,
 #   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_props_binned_', suff, '.pdf', sep=''), scale=1, width=12, height=12)
-#     ggsave(file=paste(fpath, '/veg_maps_binned_', suff, '.eps', sep=''), scale=1, width=12, height=12)
-    #     dev.off()
+    fname = paste0(fpath, '/veg_maps_props_binned_', suff, '.pdf')	
+    ggsave(file=fname, scale=1, width=12, height=12)
+    sys_str = paste("pdfcrop", fname, fname, sep=' ')
+    system(sys_str)
   }
   return(p)
 }
@@ -397,7 +402,10 @@ plot_data_maps <- function(y, centers, taxa, t, N, K, T, thresh, limits, suff, s
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_data_', suff, '.pdf', sep=''), scale=1, width=12)
+    fname = paste0(fpath, '/veg_maps_data_', suff, '.pdf')
+    ggsave(file=fname, scale=1, width=12)
+    sys_str = paste("pdfcrop", fname, fname, sep=' ')
+    system(sys_str)
 #     dev.off()
   }
    return(p)
@@ -633,7 +641,10 @@ plot_core_locations_select <- function(y, centers_pol, centers_pls, ages, idx.ke
   print(p)
   
   if (save_plots){
-    ggsave(file=paste(fpath, '/core_locs_', suff, '.pdf', sep=''), scale=1)
+    fname = paste0(fpath, '/core_locs_', suff, '.pdf')	
+    ggsave(file=fname, scale=1)
+    sys_str = paste("pdfcrop", fname, fname, sep=' ')
+    system(sys_str)
   }
   
   return(p)
@@ -848,8 +859,10 @@ plot_data_maps_binned <- function(y, centers, taxa, t, N, K, T, breaks, limits, 
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    ggsave(file=paste(fpath, '/veg_maps_data_binned', suff, '.pdf', sep=''), scale=1, width=12)
-#     ggsave(file=paste(fpath, '/veg_maps_data_binned', suff, '.eps', sep=''), scale=1, width=12)
+    fname = paste0(fpath, '/veg_maps_data_binned', suff, '.pdf')	
+    ggsave(file=fname, scale=1, width=12)
+    sys_str = paste("pdfcrop", fname, fname, sep=' ')
+    system(sys_str)
   }
   return(p)
 }

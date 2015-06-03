@@ -1,46 +1,10 @@
-# library(Rcpp)
-# library(inline)
-# library(ggplot2)
-# library(rstan)
-# library(reshape)
-# library(fields)
-# 
-# source('r/utils/pred_plot_funs.r')
-# source('r/utils/pred_helper_funs.r')
-# # source('r/read_stanbin.r')
-# 
-# # where to put the figures
-# subDir <- paste("figures/", suff_fit, sep='')
-# save_plots = TRUE
-# suff = ''
-# 
-# mu0        = TRUE
-# od         = TRUE
-# bt         = TRUE
-# mpp        = TRUE
-# mut        = FALSE
-# save_plots = TRUE
-# 
-# create_figure_path(subDir)
-# 
-# load(paste('r/dump/', suff_dat, '.rdata', sep=''))
-# 
-# 
-W = K-1
-
-# for full model
-N_pars = 3*(K-1) + 1
-
-
 ###############################################################################################################
 # chunk: load processed output
 ###############################################################################################################
-# load(file=paste0(subDir, '/process_out.rdata'))
 r_pred = process_out$r
 g      = process_out$g
 # rm(process_out)
 
-# load(file=paste0(subDir, '/process_mean.rdata'))
 mu_g     = process_mean$mu_g
 mu_t     = process_mean$mu_t
 mu       = process_mean$mu
@@ -107,26 +71,6 @@ for (k in 1:W){
 }
 dev.off()
 
-
-# ######################################
-# # check if need further OD
-# mu_t       = get_mut(post, N_pars=W)
-# sum_Halpha = process_out$sumHalpha
-# 
-# pdf(file=paste0(subDir, '/compare_mu_Halpha.pdf'), width=8, height=8)
-# for (k in 1:W){
-#   par(mfrow=c(3,2))
-#   par(oma=c(0,0,2,0))
-#   for (t in 1:3){
-#     plot(mu_t[t,k,], type="l", ylab=paste0('mu_t[', t, ',', k, ']'))
-#   #   lines(mu_t[t+1,1,], col="blue")
-#     plot(sum_Halpha[t,k,], type="l", ylab=paste0('sum_Halpha[', t, ',', k, ']'))
-# 
-#   }
-#   title(main=taxa[k], outer=TRUE)
-# }
-# dev.off()
-
 # mu_t_int = colSums(mu_t)
 # mu_t_int[1] - mean(mu[,1])
 
@@ -147,16 +91,19 @@ trace_plot_process(g, suff='g', save_plots=save_plots)
 
 r_mean = matrix(NA, nrow=N*T, ncol=K)
 g_mean = matrix(NA, nrow=N*T, ncol=W)
+mu_g_mean = matrix(NA, nrow=N*T, ncol=W)
 niter = dim(r_pred)[3]
 
 for (i in 1:(N*T)){
   r_mean[i,] = rowSums(r_pred[i,,])/niter
   g_mean[i,] = rowSums(g[i,,])/niter
+  mu_g_mean[i,] = rowSums(mu_g[i,,])/niter
 }
-# 
+
 # rm(g)
 # rm(r_pred)
 
+ print('Computed mean pred vals')
 
 limits = get_limits(centers_pls)
 ####################################################################################################
@@ -174,7 +121,8 @@ breaks = c(0, 0.01, 0.05, 0.10, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 1)
 # p_binned <- plot_pred_maps_binned(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff=suff1, save_plots=save_plots)
 p_binned <- plot_pred_maps_binned_select(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff=suff_figs, save_plots, fpath=subDir)
 
-# FIX THIS SO it is ONLY select locations...
+print('Plotted predictions')
+
 ####################################################################################################
 # chunk: predicted process maps
 ####################################################################################################
@@ -184,6 +132,11 @@ p_binned <- plot_pred_maps_binned_select(r_mean, centers_veg, breaks, taxa, ages
 
 suff=paste0('process_', suff_figs)
 plot_pred_maps_select(g_mean, centers_veg, taxa=taxa, ages, N, K-1, T, thresh=NA, limits, type='process', suff=suff,  save_plots=save_plots)
+
+suff=paste0('mug_', suff_figs)
+plot_pred_maps_select(mu_g_mean, centers_veg, taxa=taxa, ages, N, K-1, T, thresh=NA, limits, type='process', suff=suff,  save_plots=save_plots)
+
+print('Plotted process')
 
 ####################################################################################################
 # chunk: plot observed proportions
@@ -203,3 +156,24 @@ plot_core_locations_select(y, centers_pol, centers_pls, ages, idx.keep, limits, 
 # # suff4=paste(suff, '_compare', sep='')
 # # 
 # # plot_both_maps(r_mean, y_veg, centers=centers_pls, taxa=taxa, ages, N, K, T, thresh=1, suff=suff3, save_plots=save_plots)
+
+
+
+# ######################################
+# # check if need further OD
+# mu_t       = get_mut(post, N_pars=W)
+# sum_Halpha = process_out$sumHalpha
+# 
+# pdf(file=paste0(subDir, '/compare_mu_Halpha.pdf'), width=8, height=8)
+# for (k in 1:W){
+#   par(mfrow=c(3,2))
+#   par(oma=c(0,0,2,0))
+#   for (t in 1:3){
+#     plot(mu_t[t,k,], type="l", ylab=paste0('mu_t[', t, ',', k, ']'))
+#   #   lines(mu_t[t+1,1,], col="blue")
+#     plot(sum_Halpha[t,k,], type="l", ylab=paste0('sum_Halpha[', t, ',', k, ']'))
+# 
+#   }
+#   title(main=taxa[k], outer=TRUE)
+# }
+# dev.off()
