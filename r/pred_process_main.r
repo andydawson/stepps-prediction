@@ -15,11 +15,15 @@ source('r/mugp.r')
 source('r/runs.r')
 
 for (run in runs){
+
+  # post_process_run(run)
+  # gc()
+
   suff_dat  = run$suff_dat
   suff_fit  = run$suff_fit
   suff_figs = run$suff_figs
   #   source('r/pred_process_full_test.r')
-  
+
   # where to put the figures
   subDir <- paste("figures/", suff_fit, sep='')
   create_figure_path(subDir)
@@ -27,8 +31,11 @@ for (run in runs){
   # load the data and posterior draws
   load(paste0('r/dump/', suff_dat, '.rdata'))
   post_dat = load_stan_output(suff_fit)
+
+  # N       = nrow(d_inter)
+  # N_knots = ncol(d_inter)
   
-  process_out = build_r(post_dat, T, K)
+  process_out = build_r(post_dat, N, T, K)
   print('Built r')
 
 #   save(process_out, file=paste0(subDir, '/process_out.rdata'))
