@@ -39,6 +39,7 @@ return r;
   }
 ', verbose=TRUE)
 
+
 # # matrix vector mult
 # cppFunction('
 #   NumericMatrix mat_vec_mult(int N, int N_knots, NumericMatrix H, NumericVector alpha) {

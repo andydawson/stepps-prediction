@@ -14,26 +14,42 @@ source('r/mugp.r')
 # edit this file to process different runs
 source('r/runs.r')
 
-for (run in runs){
+nruns    = length(runs)
+r_cell   = list(length=nruns)
+r_quants = array(NA, dim=c(nruns, T, K, 3))
+
+for (i in 1:nruns){
+  run=runs[[i]]  
 
   # suff_dat  = run$suff_dat
   # suff_fit  = run$suff_fit
   # suff_figs = run$suff_figs
 
-  preds = load_cell(run, 100)
+  g_cell = load_cell(run, 100)
 
   # # where to put the figures
   # subDir <- paste("figures/", suff_fit, sep='')
   # create_figure_path(subDir)
   
   # load the data and posterior draws
-  load(paste0('r/dump/', suff_dat, '.rdata'))
-  post_dat = load_stan_output(suff_fit)
-  
-  process_out = build_r_cell(post_dat, N, T, K)
+  load(paste0('r/dump/', run$suff_dat, '.rdata'))
 
- }
+  r_cell[[i]] = build_r_cell(g_cell, N, T, K) 
 
+  for (t in 1:T){
+    r_quants[i,t,,] = t(apply(r_cell[[i]]$rc[t,,], 1, function(x) quantile(x, probs=c(0.025, 0.5, 0.975)))) 
+  }
+ 
+}
+
+
+r_melt = melt(r_quants, varnames=c("run", "time", "taxon", "quant"))
+
+p <- ggplot(r_melt) + geom_line(data=r_melt, aes(x=value, y=time, colour=run, linetype=quant))
+p <- p + facet_wrap(~taxon, ncol=6)
+
+
+# functions
 build_r_cell <- function(g_cell, N, T, K){
   
   W       = K-1
@@ -55,10 +71,10 @@ build_r_cell <- function(g_cell, N, T, K){
     
     sum_exp_g = rowSums(exp(gc[,,i]))
        
-    rc[,,i] <- sum2one_constraint(K, N, T, as.matrix(gc[,,i]), sum_exp_g) 
+    rc[,,i] <- sum2one_constraint_cell(K, N, T, as.matrix(gc[,,i]), sum_exp_g) 
   }
   
-  return(list(r=r, g=g))
+  return(list(rc=rc, gc=gc))
 }
 
 
@@ -66,7 +82,7 @@ build_r_cell <- function(g_cell, N, T, K){
 # r[,,i] <- sum2one_constraint_cell(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
 # additive log_ratio transformation
 cppFunction('
-  NumericMatrix sum2one_constraint(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
+  NumericMatrix sum2one_constraint_cell(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
     //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
     NumericMatrix r(T, K);
     for (int k = 0; k<(K-1); k++)
