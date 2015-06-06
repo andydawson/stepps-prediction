@@ -1,3 +1,4 @@
 *.csv filter=fat -crlf
 *.rdata filter=fat -crlf
+*.bin filter=fat -crlf
 
