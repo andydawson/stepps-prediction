@@ -33,7 +33,7 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
   int nsamples = 0;
 
   /*
-   * write 3 zeros, will overwrite with proper dimensions later
+   * write 3 zeros (counts), will overwrite with proper dimensions later
    */
   fwrite(zeros, sizeof(int), 3, rdata);
 
@@ -49,14 +49,14 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
     if (strncmp(lbuf, "lp__", 4) == 0) {
 
       /*
-       * header line, count parameters, but skip 'treedepth__' and 'n_divergent__'
+       * header line, count parameters
        */
 
       for (i=0, ntok=1; i<LBUFLEN; i++) {
         if (lbuf[i] == ',') ntok++;
-        if (lbuf[i] == 0) break;
+        if (lbuf[i] ==   0) break;
       }
-      nparams = ntok - 2;
+      nparams = ntok;
 
       printf("nparams:  %d\n", nparams);
 
@@ -77,12 +77,9 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
         return 2;
       }
 
-      // copy parameter names, skip 'treedepth__' and 'n_divergent__'
-      for (tok = strtok(lbuf, ","), ntok = 0, i = 0; tok != NULL; tok = strtok(NULL, ",\n"), ntok++) {
-        if (! (ntok == 3 || ntok == 4)) {
-          strncpy(params+i*PARAMLEN, tok, PARAMLEN-1);
-          i++;
-        }
+      // copy parameter names
+      for (ntok=0, tok=strtok(lbuf, ","); tok != NULL; ntok++, tok=strtok(NULL, ",\n")) {
+	strncpy(params+ntok*PARAMLEN, tok, PARAMLEN-1);
       }
 
     } else if (strncmp(lbuf, "# Adapt", 7) == 0) {
@@ -99,14 +96,12 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
     } else if ((lbuf[0] != '#') && isgraph(lbuf[0])) {
 
       /*
-       * parse sample and write, skip 'treedepth__' and 'n_divergent__'
+       * parse sample and write
        */
-      for (tok = strtok(lbuf, ","), ntok = 0, i = 0; tok != NULL; tok = strtok(NULL, ","), ntok++) {
-        if (! (ntok == 3 || ntok == 4)) {
-          values[i++] = (float) atof(tok);
-        }
+      for (ntok=0, tok=strtok(lbuf, ","); tok != NULL; ntok++, tok=strtok(NULL, ",\n")) {
+	values[ntok] = (float) atof(tok);
       }
-      if (i == nparams) {
+      if (ntok == nparams) {
         fwrite(values, sizeof(float), nparams, rdata);
         nsamples++;
       }
@@ -122,6 +117,11 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
 
   for (i=0; i<nparams; i++) {
     fwrite(params+i*PARAMLEN, sizeof(char), strlen(params+i*PARAMLEN)+1, rdata);
+  }
+
+  for (i=0; i<nparams; i++) {
+    tok = strtok(params+i*PARAMLEN, ".");
+    fwrite(tok, sizeof(char), strlen(tok)+1, rdata);
   }
 
   fseek(rdata, 0L, SEEK_SET);

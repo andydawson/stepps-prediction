@@ -859,7 +859,7 @@ plot_data_maps_binned <- function(y, centers, taxa, t, N, K, T, breaks, limits, 
   print(p)
   Sys.sleep(2)
   if (save_plots){
-    fname = paste0(fpath, '/veg_maps_data_binned', suff, '.pdf')	
+    fname = paste0(fpath, '/veg_maps_data_binned_', suff, '.pdf')	
     ggsave(file=fname, scale=1, width=12)
     sys_str = paste("pdfcrop", fname, fname, sep=' ')
     system(sys_str)

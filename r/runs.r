@@ -14,12 +14,21 @@ save_plots = TRUE
 #           suff_fit = '12taxa_699cells_120knots_0to2000ypb_KW_KGAMMA_G_umw_3by_v2',
 #           suff_figs = 'KW_KGAMMA_G')
 
+# PL = list(suff_dat  = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3',
+#           suff_fit  = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v2',
+#           suff_figs = 'PL')
+
+# G  = list(suff_dat  = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3', 
+#           suff_fit  = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v2', 
+#           suff_figs = 'G')
+
+
 PL = list(suff_dat  = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v0.3',
-          suff_fit  = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by_v2',
+          suff_fit  = '12taxa_699cells_120knots_0to2000ypb_PL_umw_3by',
           suff_figs = 'PL')
 
 G  = list(suff_dat  = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v0.3', 
-          suff_fit  = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by_v2', 
+          suff_fit  = '12taxa_699cells_120knots_0to2000ypb_G_umw_3by', 
           suff_figs = 'G')
 
 # PL = list(suff_dat = '12taxa_699cells_120knots_0to2000ypb_KW_KGAMMA_PL_umw_3by_v0.3',

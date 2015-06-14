@@ -39,6 +39,7 @@ return r;
   }
 ', verbose=TRUE)
 
+
 # # matrix vector mult
 # cppFunction('
 #   NumericMatrix mat_vec_mult(int N, int N_knots, NumericMatrix H, NumericVector alpha) {
@@ -58,43 +59,37 @@ load_stan_output <- function(suff_fit){
   # if (!file.exists(paste0('output/', suff_fit,'.rdata'))){
   fname     = sprintf('output/%s.bin', suff_fit)
   object    = read_stanbin(fname) 
-  samples   = data.frame(object$samples[,5:ncol(object$samples)], object$samples[,1])
+
+  # find first parameter
+  col0 = 1
+  for (i in 1:10) {
+    if (grepl("__", object$params[i], fixed=TRUE) == FALSE) {
+      col0 = i
+      break
+    }
+  }
+  
+  samples   = data.frame(object$samples[,col0:ncol(object$samples)], object$samples[,1])
   post      = array(0, c(nrow(samples), 1, ncol(samples)))   
   post[,1,] = as.matrix(samples) 
   dimnames(post)[[3]] = colnames(samples)
   
-  #   save(post, file=paste0('output/', suff_fit,'.rdata'))
-  # } else {
-  #   load(paste0('output/', suff_fit,'.rdata'))
-  # }
-  
-  col_names = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))
-  
-  return(list(post=post, par_names=par_names))
+  return(list(post=post, par_names=object$par_names))
 }
 
 
 
-build_r <- function(post_dat, T, K){
+build_r <- function(post_dat, N, T, K){
 
   post      = post_dat$post
   par_names = post_dat$par_names
   
-  W = K-1
-  N = nrow(d_inter)
-  N_knots = ncol(d_inter)
+  W       = K-1
   niter   = dim(post[,1,])[1] 
   
-  g    = array(NA, dim=c(N*T, W, niter))
-  r    = array(NA, dim=c(N*T, K, niter))
-  #r_new    = array(NA, dim=c(N*T, K, niter))
-
-#   col_names  = colnames(post[,1,])
-#   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))  
-#   #   col_substr = sapply(strsplit(col_names, "\\["), function(x) x[1])
-#   #   par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))  
-
+  g      = array(NA, dim=c(N*T, W, niter))
+  r      = array(NA, dim=c(N*T, K, niter))
+  
   g_cols = which(par_names == 'g')
   
   for (k in 1:W){
@@ -102,8 +97,7 @@ build_r <- function(post_dat, T, K){
     print(k)
     
     g_k_cols = seq(k, T*N*W, by=W)
-#     col_names[which(par_names == 'g')][g_cols]
-    g[,k,] = t(post[,1,g_cols[g_k_cols]])    
+    g[,k,]   = t(post[,1,g_cols[g_k_cols]])    
 
   }
   
@@ -137,6 +131,26 @@ build_r <- function(post_dat, T, K){
   
   return(list(r=r, g=g))
 }
+
+
+build_r_from_mu_g <- function(mu_g, N, T, K){
+
+  niter = dim(mu_g)[3]
+  r     = array(NA, dim=c(N*T, K, niter))
+  
+  print("Log-ratio transforming g")
+  
+  for (i in 1:niter){
+    
+    if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
+    
+    sum_exp_g = rowSums(exp(mu_g[,,i]))       
+    r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+  }
+  
+  return(r)
+}
+
 
 build_mu_g_serial <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0){
   

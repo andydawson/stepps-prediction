@@ -12,7 +12,11 @@ Halpha_t = process_mean$Halpha_t
 Halpha_s = process_mean$Halpha_s
 # rm(process_mean)
 
+r_mu_g = build_r_from_mu_g(mu_g, N, T, K)
+
 niter = dim(g)[3]
+
+function()
 
 mean_Halpha_t = array(NA, dim=c(W, T-1, niter))
 for (k in 1:W){
@@ -90,14 +94,16 @@ trace_plot_process(g, suff='g', save_plots=save_plots)
 
 
 r_mean = matrix(NA, nrow=N*T, ncol=K)
+r_mu_g_mean = matrix(NA, nrow=N*T, ncol=K)
 g_mean = matrix(NA, nrow=N*T, ncol=W)
 mu_g_mean = matrix(NA, nrow=N*T, ncol=W)
 niter = dim(r_pred)[3]
 
 for (i in 1:(N*T)){
-  r_mean[i,] = rowSums(r_pred[i,,])/niter
-  g_mean[i,] = rowSums(g[i,,])/niter
-  mu_g_mean[i,] = rowSums(mu_g[i,,])/niter
+  r_mean[i,]       = rowSums(r_pred[i,,])/niter
+  r_mu_g_mean[i,]  =  rowSums(r_mu_g[i,,])/niter
+  g_mean[i,]       = rowSums(g[i,,])/niter
+  mu_g_mean[i,]    = rowSums(mu_g[i,,])/niter
 }
 
 # rm(g)
@@ -134,7 +140,7 @@ suff=paste0('process_', suff_figs)
 plot_pred_maps_select(g_mean, centers_veg, taxa=taxa, ages, N, K-1, T, thresh=NA, limits, type='process', suff=suff,  save_plots=save_plots)
 
 suff=paste0('mug_', suff_figs)
-plot_pred_maps_select(mu_g_mean, centers_veg, taxa=taxa, ages, N, K-1, T, thresh=NA, limits, type='process', suff=suff,  save_plots=save_plots)
+plot_pred_maps_select(r_mu_g_mean, centers_veg, taxa=taxa, ages, N, K-1, T, thresh=NA, limits, type='prop', suff=suff,  save_plots=save_plots)
 
 print('Plotted process')
 
