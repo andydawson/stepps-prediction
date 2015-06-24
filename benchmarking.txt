@@ -1,0 +1,101 @@
+Benchmarking (using test_pred_large, in serial)
+--
+
+Taiga: 
+Intel(R) Core(TM) i7-3740QM CPU @ 2.70GHz
+8GB
+#  Elapsed Time: 402.433 seconds (Warm-up)
+#                12.3305 seconds (Sampling)
+#                414.763 seconds (Total)
+
+scf-sm12:
+AMD Opteron(TM) Processor 6272 @ 2.1GHz
+248GB RAM
+#  Elapsed Time: 1744.37 seconds (Warm-up)
+#                21.5821 seconds (Sampling)
+#                1765.96 seconds (Total)
+
+scf-sm20:
+Intel(R) Xeon(R) CPU E5-2643 v2 @ 3.50GHz
+128GB RAM
+#  Elapsed Time: 969.466 seconds (Warm-up)
+#                12.8845 seconds (Sampling)
+#                982.35 seconds (Total)
+
+
+scf-sm23:
+Intel(R) Xeon(R) CPU E5-2643 v2 @ 3.50GHz
+128GB RAM
+#  Elapsed Time: 985.506 seconds (Warm-up)
+#                12.4353 seconds (Sampling)
+#                997.941 seconds (Total)
+#  Elapsed Time: 1033.77 seconds (Warm-up)
+#                13.6068 seconds (Sampling)
+#                1047.38 seconds (Total)
+
+CRC *@@bio:
+2.4 GHz AMD Opteron processors
+512GB RAM
+#  Elapsed Time: 777.3 seconds (Warm-up)
+#                24.13 seconds (Sampling)
+#                801.43 seconds (Total)
+
+CRC long:
+2.4 GHz AMD Opteron processors
+12GB RAM
+#  Elapsed Time: 1273.26 seconds (Warm-up)
+#                41.09 seconds (Sampling)
+#                1314.35 seconds (Total)
+
+
+Parallel (using test_pred_large, with 12 cores)
+--
+
+scf-sm12:
+AMD Opteron(TM) Processor 6272 @ 2.1GHz
+248GB RAM
+Wallclock time: 17:08
+#  Elapsed Time: 3174.64 seconds (Warm-up)
+#                41.4278 seconds (Sampling)
+#                3216.07 seconds (Total)
+
+scf-sm20:
+Intel(R) Xeon(R) CPU E5-2643 v2 @ 3.50GHz
+128GB RAM
+Wallclock time: 5:20
+#  Elapsed Time: 2389.78 seconds (Warm-up)
+#                31.6963 seconds (Sampling)
+#                2421.48 seconds (Total)
+
+scf-sm22:
+Intel(R) Xeon(R) CPU E5-2643 v2 @ 3.50GHz
+128GB RAM
+Wallclock time: 3:58
+#  Elapsed Time: 1428.37 seconds (Warm-up)
+#                18.1223 seconds (Sampling)
+#                1446.5 seconds (Total)
+
+scf-sm23:
+Intel(R) Xeon(R) CPU E5-2643 v2 @ 3.50GHz
+128GB RAM
+Wallclock time: 3:56
+#  Elapsed Time: 1432.7 seconds (Warm-up)
+#                16.887 seconds (Sampling)
+#                1449.59 seconds (Total)
+
+CRC *@@bio:
+2.4 GHz AMD Opteron processors
+512GB RAM
+Wallclock time: 3:11
+#  Elapsed Time: 1081.16 seconds (Warm-up)
+#                34.03 seconds (Sampling)
+#                1115.19 seconds (Total)
+Wallclock time: 3:38
+#  Elapsed Time: 1131.74 seconds (Warm-up)
+#                34.32 seconds (Sampling)
+#                1166.06 seconds (Total)
+
+CRC long:
+2.4 GHz AMD Opteron processors
+12GB RAM
+XXX
