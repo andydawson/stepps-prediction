@@ -55,7 +55,7 @@ namespace pred_model_namespace {
     matrix_d d_knots;
     matrix_d d_inter;
     matrix_d w;
-    matrix_d lag;
+    //matrix_d lag;
     int W;
     vector_d eta2;
     vector_d zeros;
@@ -246,19 +246,19 @@ namespace pred_model_namespace {
         }
       }
 
-      context__.validate_dims("data initialization", "lag", "matrix_d", context__.to_vec(T,T));
-      stan::math::validate_non_negative_index("lag", "T", T);
-      stan::math::validate_non_negative_index("lag", "T", T);
-      lag = matrix_d(T,T);
-      vals_r__ = context__.vals_r("lag");
-      pos__ = 0;
-      size_t lag_m_mat_lim__ = T;
-      size_t lag_n_mat_lim__ = T;
-      for (size_t n_mat__ = 0; n_mat__ < lag_n_mat_lim__; ++n_mat__) {
-        for (size_t m_mat__ = 0; m_mat__ < lag_m_mat_lim__; ++m_mat__) {
-          lag(m_mat__,n_mat__) = vals_r__[pos__++];
-        }
-      }
+      // context__.validate_dims("data initialization", "lag", "matrix_d", context__.to_vec(T,T));
+      // stan::math::validate_non_negative_index("lag", "T", T);
+      // stan::math::validate_non_negative_index("lag", "T", T);
+      // lag = matrix_d(T,T);
+      // vals_r__ = context__.vals_r("lag");
+      // pos__ = 0;
+      // size_t lag_m_mat_lim__ = T;
+      // size_t lag_n_mat_lim__ = T;
+      // for (size_t n_mat__ = 0; n_mat__ < lag_n_mat_lim__; ++n_mat__) {
+      //   for (size_t m_mat__ = 0; m_mat__ < lag_m_mat_lim__; ++m_mat__) {
+      //     lag(m_mat__,n_mat__) = vals_r__[pos__++];
+      //   }
+      // }
 
       // validate data
       try {
@@ -403,13 +403,8 @@ namespace pred_model_namespace {
       // set parameter ranges
       num_params_r__ = 0U;
       param_ranges_i__.clear();
-      ++num_params_r__;
       num_params_r__ += W;
-      // num_params_r__ += W;
-      // num_params_r__ += W;
-      // num_params_r__ += (T-1) * W;
       num_params_r__ += N_knots * W;
-      // num_params_r__ += N_knots * (W * (T - 1));
       num_params_r__ += (N * T) * W;
     }
 
@@ -628,6 +623,10 @@ namespace pred_model_namespace {
       // priors
       lp += normal_log_double(mu, 0, mu_std);
 
+      // std::cout << "LP after mu prior : " << lp << std::endl;
+
+      vector<matrix_d> H_t(W);
+
       vector<vector_d> var_g(W);
       vector<vector_d> mu_g(W);
       matrix_d         exp_g(N*T, W);
@@ -656,7 +655,7 @@ namespace pred_model_namespace {
 
       	  double cvar = eta2[k] * c_i * C_s_inv[k] * c_i.transpose();
 
-      	  mu_g[k][i * T]  = mu[k] + mu_g[k][i * T];
+      	  mu_g[k][i * T] = mu[k] + mu_g[k][i * T];
       	  var_g[k][i * T] = eta2[k] - cvar;
 
       	  for (int t=1; t<T; ++t){
@@ -727,6 +726,16 @@ namespace pred_model_namespace {
 	}
       }
 
+      // for (int i = 0; i < N_cores; ++i) {
+      // 	for (int t = 0; t < T; ++t) {
+      // 	  std::cout << "out_sum : " << out_sum.row(i *T + t) << std::endl;
+      // 	  std::cout << "r_new : " << r_new.row(i *T + t) << std::endl;
+      // 	  for (int j = 0; j < N; ++j) {
+      // 	    std::cout << "r : " << r.row(j *T + t) << std::endl;
+      // 	  }
+      // 	}
+      // }
+
       timer_rnew.toc(0);
 
       vector<int> N_grains(N_cores*T);
@@ -764,6 +773,7 @@ namespace pred_model_namespace {
 
       fill(gradient.begin(), gradient.end(), 0.0);
 
+      // partial of mu_t normal
       #pragma omp parallel for
       for (int k=0; k<W; ++k) {
 
@@ -773,12 +783,6 @@ namespace pred_model_namespace {
 	  int idx_alpha_s = W + k*N_knots + v;
 	  gradient[idx_alpha_s] -= tmp[v];
 	}
-
-	// // partial of MVN for alpha_t WRT sigma
-
-	// timer_mvn.tic(k);
-
-	timer_mvn.toc(k);
 
 	// partial of mu prior
 	gradient[k] -=  mu[k] / (mu_std * mu_std);
@@ -892,7 +896,7 @@ namespace pred_model_namespace {
     void get_param_names(std::vector<std::string>& names__) const {
       names__.resize(0);
       names__.push_back("mu");
-      names__.push_back("alpha_s");
+      names__.push_back("alpha_s");      
       names__.push_back("g");
     }
 
@@ -957,6 +961,8 @@ namespace pred_model_namespace {
       (void) lp__; // dummy call to supress warning
       stan::math::accumulator<double> lp_accum__;
 
+
+
       // validate transformed parameters
 
       // write transformed parameters
@@ -992,35 +998,14 @@ namespace pred_model_namespace {
     void write_csv_header(std::ostream& o__) const {
       stan::io::csv_writer writer__(o__);
       writer__.comma();
-      o__ << "ksi";
-      for (int k_0__ = 1; k_0__ <= W; ++k_0__) {
-        writer__.comma();
-        o__ << "sigma" << '.' << k_0__;
-      }
-      for (int k_0__ = 1; k_0__ <= W; ++k_0__) {
-        writer__.comma();
-        o__ << "lambda" << '.' << k_0__;
-      }
       for (int k_0__ = 1; k_0__ <= W; ++k_0__) {
         writer__.comma();
         o__ << "mu" << '.' << k_0__;
-      }
-      for (int k_1__ = 1; k_1__ <= T-1; ++k_1__) {
-        for (int k_0__ = 1; k_0__ <= W; ++k_0__) {
-          writer__.comma();
-          o__ << "mu_t" << '.' << k_0__ << '.' << k_1__;
-        }
       }
       for (int k_1__ = 1; k_1__ <= N_knots; ++k_1__) {
         for (int k_0__ = 1; k_0__ <= W; ++k_0__) {
           writer__.comma();
           o__ << "alpha_s" << '.' << k_0__ << '.' << k_1__;
-        }
-      }
-      for (int k_1__ = 1; k_1__ <= N_knots; ++k_1__) {
-        for (int k_0__ = 1; k_0__ <= (W * (T - 1)); ++k_0__) {
-          writer__.comma();
-          o__ << "alpha_t" << '.' << k_0__ << '.' << k_1__;
         }
       }
       for (int k_1__ = 1; k_1__ <= (N * T); ++k_1__) {
@@ -1051,6 +1036,7 @@ namespace pred_model_namespace {
         alpha_s.push_back(in__.vector_constrain(N_knots));
         writer__.write(alpha_s[k_0__]);
       }
+      vector<vector_d> alpha_t;
       vector<vector_d> g;
       size_t dim_g_0__ = W;
       for (size_t k_0__ = 0; k_0__ < dim_g_0__; ++k_0__) {
@@ -1098,6 +1084,7 @@ namespace pred_model_namespace {
                                  bool include_tparams__ = true,
                                  bool include_gqs__ = true) const {
       std::stringstream param_name_stream__;
+      param_name_stream__.str(std::string());
       for (int k_0__ = 1; k_0__ <= W; ++k_0__) {
         param_name_stream__.str(std::string());
         param_name_stream__ << "mu" << '.' << k_0__;
@@ -1128,6 +1115,7 @@ namespace pred_model_namespace {
                                    bool include_tparams__ = true,
                                    bool include_gqs__ = true) const {
       std::stringstream param_name_stream__;
+      param_name_stream__.str(std::string());
       for (int k_0__ = 1; k_0__ <= W; ++k_0__) {
         param_name_stream__.str(std::string());
         param_name_stream__ << "mu" << '.' << k_0__;

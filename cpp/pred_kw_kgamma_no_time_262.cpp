@@ -57,7 +57,7 @@ private:
     matrix_d d_knots;
     matrix_d d_inter;
     vector<matrix_d> w;
-    matrix_d lag;
+    //matrix_d lag;
     // int N_p;
     // double P;
     int W;
@@ -248,19 +248,19 @@ public:
 	  }
 	}
 
-        context__.validate_dims("data initialization", "lag", "matrix_d", context__.to_vec(T,T));
-        stan::math::validate_non_negative_index("lag", "T", T);
-        stan::math::validate_non_negative_index("lag", "T", T);
-        lag = matrix_d(T,T);
-        vals_r__ = context__.vals_r("lag");
-        pos__ = 0;
-        size_t lag_m_mat_lim__ = T;
-        size_t lag_n_mat_lim__ = T;
-        for (size_t n_mat__ = 0; n_mat__ < lag_n_mat_lim__; ++n_mat__) {
-            for (size_t m_mat__ = 0; m_mat__ < lag_m_mat_lim__; ++m_mat__) {
-                lag(m_mat__,n_mat__) = vals_r__[pos__++];
-            }
-        }
+        // context__.validate_dims("data initialization", "lag", "matrix_d", context__.to_vec(T,T));
+        // stan::math::validate_non_negative_index("lag", "T", T);
+        // stan::math::validate_non_negative_index("lag", "T", T);
+        // lag = matrix_d(T,T);
+        // vals_r__ = context__.vals_r("lag");
+        // pos__ = 0;
+        // size_t lag_m_mat_lim__ = T;
+        // size_t lag_n_mat_lim__ = T;
+        // for (size_t n_mat__ = 0; n_mat__ < lag_n_mat_lim__; ++n_mat__) {
+        //     for (size_t m_mat__ = 0; m_mat__ < lag_m_mat_lim__; ++m_mat__) {
+        //         lag(m_mat__,n_mat__) = vals_r__[pos__++];
+        //     }
+        // }
         // context__.validate_dims("data initialization", "N_p", "int", context__.to_vec());
         // N_p = int(0);
         // vals_i__ = context__.vals_i("N_p");
@@ -435,7 +435,6 @@ public:
         // set parameter ranges
         num_params_r__ = 0U;
         param_ranges_i__.clear();
-        ++num_params_r__;
         num_params_r__ += W;
         num_params_r__ += N_knots * W;
         num_params_r__ += (N * T) * W;
@@ -474,7 +473,6 @@ public:
                 alpha_s[i0__](j1__) = vals_r__[pos__++];
         for (int i0__ = 0U; i0__ < W; ++i0__)
             try { writer__.vector_unconstrain(alpha_s[i0__]); } catch (std::exception& e) {  throw std::runtime_error(std::string("Error transforming variable alpha_s: ") + e.what()); }
-
 
         if (!(context__.contains_r("g")))
             throw std::runtime_error("variable g missing");
@@ -664,8 +662,6 @@ public:
       // for (int k=0; k<W; ++k){
       // 	lp += normal_log_double(mu_t[k][0], 0.0, mut0_sd, 1);
       // }
-
-      vector<vector_d> qvar(W);
       // vector<matrix_d> H_s(W);
       vector<matrix_d> H_t(W);
 
@@ -697,7 +693,6 @@ public:
 	    mu_g[k][i * T + t] = M_Halpha_s[i];
       	  }
       	}
-
 	row_vector_d c_i;
 
 	timer_varg.tic(k);
@@ -750,7 +745,7 @@ public:
       vector<vector_d> sum_w(K);
 
       for (int k = 0; k < K; ++k) {
-	sum_w[k] = vector_d(N*T);
+	sum_w[k] = vector_d(N_cores*T);
       }
 
       out_sum.fill(0);
@@ -770,26 +765,12 @@ public:
 	      }
 	    }
 
-	    // std::cout << "sum_w_pot : " << sum_w_pot[k] << std::endl;
-	    // std::cout << "gamma : " << gamma[k] << std::endl;
-
-	    //sum_w[i*T+t] = out_sum.row(i * T + t).sum();
-	    sum_w[k][i*T+t] = sum_w_pot[k];
+	    sum_w[k][i*T+t] = sum_w_pot[k]; 
 	    r_new(i * T + t, k) += out_sum(i *T + t, k) * (1 - gamma[k]) / sum_w[k][i*T+t];
+
 	  }
 	}
       }
-
-  
-      // for (int i = 0; i < N_cores; ++i) {
-      // 	for (int t = 0; t < T; ++t) {
-      // 	  std::cout << "out_sum : " << out_sum.row(i *T + t) << std::endl;
-      // 	  std::cout << "r_new : " << r_new.row(i *T + t) << std::endl;
-      // 	  for (int j = 0; j < N; ++j) {
-      // 	    std::cout << "r : " << r.row(j *T + t) << std::endl;
-      // 	  }
-      // 	}
-      // }
 
       timer_rnew.toc(0);
 
@@ -830,16 +811,19 @@ public:
 
       fill(gradient.begin(), gradient.end(), 0.0);
 
-      // partial of mu_t normal
       #pragma omp parallel for
       for (int k=0; k<W; ++k) {
-
 	// partial of MVN for alpha_s wrt to alpha_s
 	vector_d tmp = 1 / eta2[k] * C_s_inv[k] * alpha_s[k];
 	for (int v=0; v<N_knots; ++v) {
-	  int idx_alpha_s = W + W*(T-1) + k*N_knots + v;
+	  int idx_alpha_s = W + k*N_knots + v;
 	  gradient[idx_alpha_s] -= tmp[v];
 	}
+
+	timer_mvn.tic(k);
+
+
+	timer_mvn.toc(k);
 
 	// partial of mu prior
 	gradient[k] -=  mu[k] / (mu_std * mu_std);
@@ -848,27 +832,28 @@ public:
 	timer_gnormal.tic(k);
 
 	for (int t=0; t<T; ++t){
-
 	  for (int n=0; n<N; ++n){
 
 	    double A      = g[k][n*T+t] - mu_g[k][n*T+t];
 	    double B      = var_g[k][n*T+t];
 	    double AoverB = A/B;
-
+	    
 	    gradient[k] += AoverB;
 
-	    int idx_g = W + W*N_knots + k*N*T + n*T + t;
+	    int idx_g        = W + W*N_knots + k*N*T + n*T + t;
 
 	    // g wrt g
 	    gradient[idx_g] -= AoverB;
 
 	    for (int v=0; v<N_knots; ++v){
-	      int idx_alpha_s  = 1 + W*3 + W*(T-1) +  k*N_knots + v;
+	      int idx_alpha_s  = W +  k*N_knots + v;
 	      gradient[idx_alpha_s] += AoverB * M_H_s[k](n,v);
 	    }
 
       	  } // n
       	} // t
+
+	timer_gnormal.toc(k);
 
 	// partial of dirmult
 
@@ -886,6 +871,8 @@ public:
 	      for (int m=0; m<K; ++m) {
 
 		const double drnew_case2 = (1-gamma[m]) * res * res / sum_w_pot[m];
+
+
 		const double dirmultp2 = digamma(y[si][m] + kappa(si,m)) - digamma(kappa(si,m));
 		const double fac1 = (dirmultp1 + dirmultp2) * phi[m];
 
@@ -920,10 +907,6 @@ public:
 	timer_dirmult.toc(k);
 
       } // k
-
-      // for (int k = 0; k < W; ++k) {
-      // 	std::cout << gradient[1 + W + k] << std::endl;
-      // }
 
       timer_fac.echo(" > fac    ");
       timer_varg.echo(" > varg   ");
@@ -963,26 +946,10 @@ public:
         dimss__.resize(0);
         std::vector<size_t> dims__;
         dims__.resize(0);
-        dimss__.push_back(dims__);
-        dims__.resize(0);
         dims__.push_back(W);
         dimss__.push_back(dims__);
         dims__.resize(0);
         dims__.push_back(W);
-        dimss__.push_back(dims__);
-        dims__.resize(0);
-        dims__.push_back(W);
-        dimss__.push_back(dims__);
-        dims__.resize(0);
-        dims__.push_back(W);
-        dims__.push_back(T);
-        dimss__.push_back(dims__);
-        dims__.resize(0);
-        dims__.push_back(W);
-        dims__.push_back(N_knots);
-        dimss__.push_back(dims__);
-        dims__.resize(0);
-        dims__.push_back((W * (T - 1)));
         dims__.push_back(N_knots);
         dimss__.push_back(dims__);
         dims__.resize(0);
