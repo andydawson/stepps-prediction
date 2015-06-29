@@ -247,6 +247,9 @@ plot_pred_maps <- function(r_mean, centers, taxa, t, N, K, T, thresh, limits, ty
   return(p)
 }
 
+
+# plot_pred_maps_select(r_mean, centers_veg, taxa=taxa, ages, N, K, T, thresh=0.5, limits, type='prop', suff=suff,  save_plots=save_plots)
+
 plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, limits, type, suff, save_plots, fpath=subDir){
   
   if (is.null(taxa)){taxa=seq(1,K)}
@@ -260,9 +263,16 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
   
   if (type=='prop'){bar_title='Proportions'}else {bar_title='Values'}
   
-  idx.keep  = c(1,2,length(ages)/2,T)
-  ages.keep = ages[idx.keep]
-  T.keep    = length(ages.keep)
+  # find a better way to do this later
+  if (length(ages) > 2){
+    idx.keep  = c(1,2,length(ages)/2,T)
+    ages.keep = ages[idx.keep]
+    T.keep    = length(ages.keep)
+  } else if (length(ages) == 1){
+    idx.keep = 1
+    ages.keep = ages
+    T.keep = length(ages.keep)
+  }
   
   idx_r_keep = vector(length=0)
   for (i in 1:T.keep){
@@ -305,6 +315,7 @@ plot_pred_maps_select <- function(r_mean, centers, taxa, ages, N, K, T, thresh, 
   return(p)
 }
 
+# plot_pred_maps_binned_select(r_mean, centers_veg, breaks, taxa, ages, N, K, T, limits, suff=suff_figs, save_plots, fpath=subDir)
 
 plot_pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N, K, T, limits, suff, save_plots, fpath=subDir){
   
@@ -317,9 +328,15 @@ plot_pred_maps_binned_select <- function(r_mean, centers, breaks, taxa, ages, N,
     #     taxa = as.vector(sapply(taxa, simpleCap))
   }
   
-  idx.keep  = c(1,2,length(ages)/2,T)
-  ages.keep = ages[idx.keep]
-  T.keep    = length(ages.keep)
+  if (length(ages) > 2){
+    idx.keep  = c(1,2,length(ages)/2,T)
+    ages.keep = ages[idx.keep]
+    T.keep    = length(ages.keep)
+  } else if (length(ages) == 1){
+    idx.keep  = 1
+    ages.keep = ages
+    T.keep    = length(ages.keep)
+  }
   
   idx_r_keep = vector(length=0)
   for (i in 1:T.keep){

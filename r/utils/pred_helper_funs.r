@@ -780,7 +780,7 @@ build_sumw_pot <- function(post, K, N_pot, d_pot, run){
   kernel = run$kernel
   
   col_names = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\.")[[1]][1]))
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
   
   if (kernel=='gaussian'){
     one_psi = run$one_psi
@@ -1397,6 +1397,8 @@ knots_in_domain4 <-function(knots, cells, cell_width){
   knots_int
 }
 
+# cores_near_domain(centers_polA/rescale, centers_veg, cell_width = res*8000/rescale)
+
 cores_near_domain <-function(knots, cells, cell_width){
     
   knots_int = matrix(nrow=0, ncol=2)
@@ -1405,7 +1407,7 @@ cores_near_domain <-function(knots, cells, cell_width){
 #      x = knots[i,1]
 #      y = knots[i,2]
      
-     d = rdist(as.matrix(cells), as.matrix(t(knots[i,])))
+     d = rdist(as.matrix(cells), matrix(t(knots[i,]), nrow=1))
     
 #     xright = x + cell_width
 #     xleft  = x - cell_width
