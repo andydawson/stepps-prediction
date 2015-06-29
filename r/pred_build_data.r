@@ -32,20 +32,20 @@ mydate = '2014-07-22'
 veg_knots = TRUE
 
 cells = NA
-# cells = seq(1,50)
+# cells = seq(1,100)
 
 # grid 
 res  = res
 side = side
-# side = 'E' # 'E', 'W', or ''
+side = '' # 'E', 'W', or ''
 # grid = 'MISP' 
 grid = 'umw'
 gridname = paste0(grid, side, '_', as.character(res), 'by')
 #gridname = 'umwE_3by'
 
 # reconstruction limits and bin-width
-tmin = 0
-tmax = 2000
+tmin = 50
+tmax = 150
 int  = 100
 
 # rescale
@@ -383,28 +383,39 @@ w <- build_weight_matrix(post, d_pol, idx_cores, N, N_cores, run)
 # calculate potential d
 # used to determine C normalizing constant in the non-local contribution term
 #####################################################################################
+
 library(plyr)
 
-x_pot = seq(-528000, 528000, by=8000)
-y_pot = seq(-416000, 416000, by=8000)
-#x_pot = seq(-8000*16, 8000*16, by=8000)
-#y_pot = seq(-8000*13, 8000*13, by=8000)
-coord_pot = expand.grid(x_pot, y_pot)
+# xlo = min(centers_veg[,1])
+# xhi = max(centers_veg[,1])
+# ylo = min(centers_veg[,2])
+# yhi = max(centers_veg[,2])
+
+# x_pot =  
+# 
+# x_pot = seq(-528000, 528000, by=8000)
+# y_pot = seq(-416000, 416000, by=8000)
+# coord_pot = expand.grid(x_pot, y_pot)
+# 
+# d_pot = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/dist.scale)
+# d_pot = unname(as.matrix(count(d_pot)))
+# 
+# N_pot = nrow(d_pot)
+
+coord_pot = seq(-700000, 700000, by=8000)
+coord_pot = expand.grid(coord_pot, coord_pot)
 
 d_pot = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/rescale)
-# d_pot0 = t(rdist(matrix(c(0,0), ncol=2), as.matrix(coord_pot, ncol=2))/rescale)
-d_pot = unname(as.matrix(count(d_pot)))
+d_pot = unname(as.matrix(count(data.frame(d_pot))))
 
-N_pot = nrow(d_pot)
-
-# should we include focal cell?
+N_pot     = nrow(d_pot)
 sum_w_pot = build_sumw_pot(post, K, N_pot, d_pot, run)
-# sum_w_pot0 = build_sumw_pot(post, K, 13965, cbind(d_pot0, rep(1,13965)), run)
 
 #####################################################################################
 # recompute gamma
 #####################################################################################
 w_coarse  = build_sumw_pot(post, K, length(d_hood), cbind(t(d_hood), rep(1, length(d_hood))), run)
+
 gamma_new = recompute_gamma(w_coarse, sum_w_pot, gamma)
 
 # #####################################################################################

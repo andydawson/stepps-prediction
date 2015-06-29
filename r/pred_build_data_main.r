@@ -1,5 +1,7 @@
-grids = c(1, 3, 5)
-sides = c('', 'E', 'W')
+# grids = c(1, 3, 5)
+# sides = c('', 'E', 'W')
+grids = c(3)
+sides = c('')
 
 run_g = list(suff_fit  = 'cal_g_ALL_v0.3', 
              suff_dat = '12taxa_mid_comp_ALL_v0.2',
@@ -30,8 +32,10 @@ run_pl_Ka_Kgamma = list(suff_fit  = 'cal_pl_Ka_Kgamma_EPs_ALL_v0.3',
 
 
 runs = list(run_g, run_pl, run_g_Kpsi_Kgamma, run_pl_Ka_Kgamma)
-grids = c(3)
-sides = c('')
+runs = list(run_g_Kpsi_Kgamma, run_pl_Ka_Kgamma)
+# runs = list(run_g, run_pl)
+# grids = c(5)
+# sides = c('E')
 
 for (run in runs){
   for (res in grids){
