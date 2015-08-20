@@ -306,6 +306,8 @@ write_par_vals <- function(post_dat, taxa, subDir, N_pars){
   post      = post_dat$post
   par_names = post_dat$par_names
   
+  ess = apply(post[,1,c(1:N_pars,dim(post)[3])], 2, ess_rfun)
+  
   # sink(sprintf('%s/%s/summary.txt', wd, path_figs1), type='output')
   sink(sprintf('%s/summary.txt', subDir), type='output')
   print('The taxa modelled are:')
@@ -313,6 +315,9 @@ write_par_vals <- function(post_dat, taxa, subDir, N_pars){
   cat('\n')
   print('Summary of posterior parameter vals:')
   print(get_quants(post, N_pars))
+  cat('\n')
+  print('ESS:')
+  print(ess)
   sink()
   
 }
@@ -529,7 +534,13 @@ get_mu <- function(post, W){
 }
 
 # build pollen counts
-build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub){
+build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, bacon){
+  
+  if (bacon) {
+    age_col = 'age_bacon'
+  } else {
+    age_col = 'age_default'
+  }
   
   taxa.start.col = min(match(taxa_all, colnames(pollen_ts)), na.rm=TRUE)
   # 
@@ -544,11 +555,12 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub){
     #   breaks = seq(0,2500,by=int)
     breaks = seq(tmin,tmax,by=int)
   
-    meta_pol  = pollen_ts[which((pollen_ts[, 'ages'] >= tmin) & 
-                                (pollen_ts[, 'ages'] <= tmax)),1:(taxa.start.col-1)]
-    counts = pollen_ts[which((pollen_ts[, 'ages'] >= tmin) & 
-                             (pollen_ts[, 'ages'] <= tmax)),taxa.start.col:ncol(pollen_ts)]
+    meta_pol  = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
+                                (pollen_ts[, age_col] <= tmax)),1:(taxa.start.col-1)]
+    counts = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
+                             (pollen_ts[, age_col] <= tmax)),taxa.start.col:ncol(pollen_ts)]
   
+    meta_pol = data.frame(meta_pol, age=rep(NA, nrow(meta_pol)))
     meta_agg = matrix(NA, nrow=0, ncol=ncol(meta_pol))
     colnames(meta_agg) = colnames(meta_pol)
   
@@ -569,22 +581,22 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub){
         #print(j)
         age = breaks[j] + int/2
       
-        age_rows = core_rows[(meta_pol[core_rows, 'ages'] >= breaks[j]) & 
-                             (meta_pol[core_rows, 'ages'] < breaks[j+1])]
+        age_rows = core_rows[(meta_pol[core_rows, age_col] >= breaks[j]) & 
+                             (meta_pol[core_rows, age_col] < breaks[j+1])]
       
         if (length(age_rows)>1){
         
           counts_agg = rbind(counts_agg, colSums(counts[age_rows, ]))
         
           meta_agg      = rbind(meta_agg, meta_pol[core_rows[1],])
-          meta_agg$ages[nrow(meta_agg)] = age/100
+          meta_agg$age[nrow(meta_agg)] = age/100
         
       } else if (length(age_rows) == 1){
         
           counts_agg = rbind(counts_agg, counts[age_rows, ])
         
           meta_agg      = rbind(meta_agg, meta_pol[core_rows[1],])
-          meta_agg$ages[nrow(meta_agg)] = age/100
+          meta_agg$age[nrow(meta_agg)] = age/100
           
       } else if (length(age_rows) == 0){
           
@@ -592,7 +604,7 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub){
           counts_agg = rbind(counts_agg, rep(0,ncol(counts_agg)))
         
           meta_agg      = rbind(meta_agg, meta_pol[core_rows[1],])
-          meta_agg$ages[nrow(meta_agg)] = age/100
+          meta_agg$age[nrow(meta_agg)] = age/100
         }
       
       }
