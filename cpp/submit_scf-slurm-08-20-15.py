@@ -11,6 +11,18 @@ runs = [ ('pred_PL',
           sample num_warmup=100 num_samples=1000 save_warmup=1\
           data file=../r/dump/12taxa_699cells_120knots_50to2050ypb_G_umw_3by_v0.3_bacon.dump \
           output file=../output/12taxa_699cells_120knots_50to2050ypb_G_umw_3by_v2_bacon.dump \
+          random seed=42'),
+         ('pred_kw_kgamma_PL',
+          './pred_kw_kgamma_262.exe \
+          sample num_warmup=100 num_samples=1000 save_warmup=1\
+          data file=../r/dump/12taxa_699cells_120knots_50to2050ypb_KW_KGAMMA_PL_umw_3by_v0.3_bacon.dump \
+          output file=../output/12taxa_699cells_120knots_50to2050ypb_KW_KGAMMA_PL_umw_3by_v3_bacon.dump \
+          random seed=42'),
+         ('pred_kw_kgamma_G',
+          './pred_kw_kgamma_262.exe \
+          sample num_warmup=100 num_samples=1000 save_warmup=1\
+          data file=../r/dump/12taxa_699cells_120knots_50to2050ypb_KW_KGAMMA_G_umw_3by_v0.3_bacon.dump \
+          output file=../output/12taxa_699cells_120knots_50to2050ypb_KW_KGAMMA_G_umw_3by_v2_bacon.dump \
           random seed=42')
 ]
 
