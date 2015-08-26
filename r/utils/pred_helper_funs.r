@@ -90,7 +90,8 @@ build_r <- function(post_dat, N, T, K){
   g      = array(NA, dim=c(N*T, W, niter))
   r      = array(NA, dim=c(N*T, K, niter))
   
-  g_cols = which(par_names == 'g')
+  # fix the stan2bin!
+  g_cols = which(par_names == 'g')-6
   
   for (k in 1:W){
     
