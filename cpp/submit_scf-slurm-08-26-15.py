@@ -17,7 +17,7 @@ runs = [ ('pred_kw_kgamma_G',
           sample num_warmup=150 num_samples=1000 save_warmup=1\
           data file=../r/dump/12taxa_699cells_120knots_cal_G_umw_3by_v0.3.dump \
           output file=../output/12taxa_699cells_120knots_cal_G_umw_3by.dump \
-          random seed=42')
+          random seed=42'),
          ('pred_PL_cal',
           './pred_base_no_time_262.exe \
           sample num_warmup=150 num_samples=1000 save_warmup=1\
