@@ -478,53 +478,53 @@ dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
      #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
      file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', 'cal_', suff, '.dump',sep=""))
 
-##########################################################################################################################
-## if base model copy gamma and w
-##########################################################################################################################
-if ( (!KGAMMA) & (!KW) ) { 
-  suff = paste0('COPY_', suff)
-  
-  gamma = rep(gamma, K)
-  sum_w_pot = rep(sum_w_pot, K)
-  
-#   w_new = vector(length=K*N_cores*N)
-#   for (j in 1:N)
-#     for (i in 1:N_cores)
-#       for (k in 1:K)
-#         w_new[(k-1)*N*N_cores + (i-1)*N + j] = w[i, j]
-# #   
-#   w_new = array(0, c(K, N_cores, N))
-#   for (k in 1:K){
-#     w_new[k,,] = w
-#   }
-  
-  w = array(rep(as.vector(w), K), c(K, N_cores, N))
-  
-  dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
-         'gamma', 'psi', 'phi', 'rho', 'eta',
-         'y', 
-         'idx_cores', 
-         'd', 'd_knots', 'd_inter', 'w',
-         'lag',
-         #        'P', 'N_p', 'sum_w_pot'),
-         'sum_w_pot'),#, 'pollen_check'),
-       #        'knot_coords',
-       #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
-       file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
-  
-  save(K, N, T, N_cores, N_knots, res,
-       gamma, psi, phi, rho, eta,
-       y, 
-       idx_cores, 
-       d, d_knots, d_inter, w,
-       lag,
-       #        P, N_p, sum_w_pot,
-       sum_w_pot, #pollen_check,
-       knot_coords,
-       centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
-       file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
-  
-}
+# ##########################################################################################################################
+# ## if base model copy gamma and w
+# ##########################################################################################################################
+# if ( (!KGAMMA) & (!KW) ) { 
+#   suff = paste0('COPY_', suff)
+#   
+#   gamma = rep(gamma, K)
+#   sum_w_pot = rep(sum_w_pot, K)
+#   
+# #   w_new = vector(length=K*N_cores*N)
+# #   for (j in 1:N)
+# #     for (i in 1:N_cores)
+# #       for (k in 1:K)
+# #         w_new[(k-1)*N*N_cores + (i-1)*N + j] = w[i, j]
+# # #   
+# #   w_new = array(0, c(K, N_cores, N))
+# #   for (k in 1:K){
+# #     w_new[k,,] = w
+# #   }
+#   
+#   w = array(rep(as.vector(w), K), c(K, N_cores, N))
+#   
+#   dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
+#          'gamma', 'psi', 'phi', 'rho', 'eta',
+#          'y', 
+#          'idx_cores', 
+#          'd', 'd_knots', 'd_inter', 'w',
+#          'lag',
+#          #        'P', 'N_p', 'sum_w_pot'),
+#          'sum_w_pot'),#, 'pollen_check'),
+#        #        'knot_coords',
+#        #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
+#        file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
+#   
+#   save(K, N, T, N_cores, N_knots, res,
+#        gamma, psi, phi, rho, eta,
+#        y, 
+#        idx_cores, 
+#        d, d_knots, d_inter, w,
+#        lag,
+#        #        P, N_p, sum_w_pot,
+#        sum_w_pot, #pollen_check,
+#        knot_coords,
+#        centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
+#        file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
+#   
+# }
 
 # dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
 #        'gamma', 'psi', 'phi', 'rho', 'eta',

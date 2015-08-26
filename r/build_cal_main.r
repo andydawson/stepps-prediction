@@ -17,7 +17,7 @@ run_pl = list(suff_fit  = 'cal_pl_ALL_v0.3',
               one_gamma = TRUE, 
               EPs       = FALSE)
 run_g_Kpsi_Kgamma = list(suff_fit  = 'cal_g_Kpsi_Kgamma_EPs_ALL_v0.3', 
-                         suff_dat = '12taxa_mid_comp_v0.1',
+                         suff_dat = '12taxa_mid_comp_ALL_v0.2',
                          kernel    = 'gaussian', 
                          one_psi   = FALSE, 
                          one_gamma = FALSE, 
@@ -32,16 +32,14 @@ run_pl_Ka_Kgamma = list(suff_fit  = 'cal_pl_Ka_Kgamma_EPs_ALL_v0.3',
 
 
 runs = list(run_g, run_pl, run_g_Kpsi_Kgamma, run_pl_Ka_Kgamma)
-# runs = list(run_g_Kpsi_Kgamma, run_pl_Ka_Kgamma)
-# runs = list(run_g, run_pl)
-# runs = list(run_g, run_g_Kpsi_Kgamma)
-grids = c(1)
+
+grids = c(3)
 sides = c('')
 
 for (run in runs){
   for (res in grids){
     for (side in sides){
-      source('r/pred_build_data_cal.r')
+      source('r/build_cal.r')
     }
   }
 }
