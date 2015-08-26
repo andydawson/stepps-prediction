@@ -16,8 +16,6 @@ r_mu_g = build_r_from_mu_g(mu_g, N, T, K)
 
 niter = dim(g)[3]
 
-function()
-
 mean_Halpha_t = array(NA, dim=c(W, T-1, niter))
 for (k in 1:W){
   for (t in 1:(T-1)){
