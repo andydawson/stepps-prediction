@@ -117,98 +117,98 @@ suff=paste0('comp_', suff_figs)
 plot_data_maps(r_comp, centers=centers_comp/rescale, taxa=taxa, ages, N_comp, K, T, thresh=0.5, limits, suff=suff, save_plots=save_plots)
 plot_data_maps_binned(r_comp, centers=centers_comp/rescale, taxa=taxa, ages, N_comp, K, T, breaks, limits, suff=suff, save_plots=save_plots)
 
-####################################################################################################
-# chunk: residuals
-####################################################################################################
-
-r_pls = matrix(nrow=nrow(y_veg), ncol=ncol(y_veg))
-
-for (i in 1:nrow(y_veg)){
-  
-  if (sum(y_veg[i,]) > 0){
-    r_pls[i, ] = y_veg[i,]/sum(y_veg[i,])
-  } else {
-    r_pls[i, ] = rep(0, ncol(y_veg))
-  }
-}
-
-# measure of distance; remove MI:LP first
-dist_mat=rdist(as.matrix(centers_pls), as.matrix(centers_comp)/rescale)
-dist_mat[dist_mat < 1e-6] = 0
-
-foo=unlist(apply(dist_mat, 2, function(x) any(x == 0)))
-
-bar = r_comp[foo, ]
-
-
-resids = sqrt(rowSums((r_pls - bar)^2))
-
-dat = data.frame(resids=resids, x=centers_pls$x*rescale, y=centers_pls$y*rescale)
-
-p <- ggplot() + geom_tile(data=dat, aes(x=x, y=y, fill=resids)) + 
-  scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
-#scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
-p <- add_map_albers(p, map_data=us.fort, limits)
-p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
-print(p)
-
-# try binning?
-resids_taxon = (r_pls - bar)#^2
-colnames(resids_taxon) = taxa
-dat_taxon = data.frame(resids_taxon, x=centers_pls$x*rescale, y=centers_pls$y*rescale)
-dat_taxon_melt = melt(dat_taxon, id=c('x', 'y'))
-
-
-p <- ggplot() + geom_tile(data=dat_taxon_melt, aes(x=x, y=y, fill=value)) + 
-  scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
-#scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
-p <- p + facet_grid(~variable)
-p <- add_map_albers(p, map_data=us.fort, limits)
-p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
-print(p)
-
-# probably should normalize somehow...
-dat_taxon_melt = dat_taxon_melt[which(abs(dat_taxon_melt$value)>0.5), ]
-p <- ggplot() + geom_tile(data=dat_taxon_melt, aes(x=x, y=y, fill=value)) + 
-  scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
-#scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
-p <- p + facet_grid(~variable)
-p <- add_map_albers(p, map_data=us.fort, limits)
-p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
-print(p)
-
-####################################################################################################
-# chunk: see if we can compare preds on 3by with comp
-####################################################################################################
-# measure of distance; remove MI:LP first
-dist_mat=rdist(as.matrix(centers_veg), as.matrix(centers_comp)/rescale)
-dist_mat[dist_mat < 1e-6] = 0
-
-foo=unlist(apply(dist_mat, 1, function(x) which.min(x)))
-
-bar = r_comp[foo, ]
-centers_comp_sub = centers_comp[foo,]
-
-
-resids = sqrt(rowSums((r_mean - bar)^2))
-
-dat = data.frame(resids=resids, x=centers_comp_sub[,1], y=centers_comp_sub[,2])
-
-p <- ggplot() + geom_tile(data=dat, aes(x=x, y=y, fill=resids)) + 
-  scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
-#scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
-p <- add_map_albers(p, map_data=us.fort, limits)
-p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
-print(p)
-
-####################################################################################################
-# chunk: residuals
-####################################################################################################
-
-# N_cores and centers_polU broken for split domain data....
-idx.keep  = c(1,2,length(ages)/2,T)
-# plot_core_locations(y, centers_polU, centers_pls, ages, limits)
-plot_core_locations_select(y, centers_pol, centers_pls, ages, idx.keep, limits, suff=suff_figs, fpat=subDir)
+# ####################################################################################################
+# # chunk: residuals
+# ####################################################################################################
+# 
+# r_pls = matrix(nrow=nrow(y_veg), ncol=ncol(y_veg))
+# 
+# for (i in 1:nrow(y_veg)){
+#   
+#   if (sum(y_veg[i,]) > 0){
+#     r_pls[i, ] = y_veg[i,]/sum(y_veg[i,])
+#   } else {
+#     r_pls[i, ] = rep(0, ncol(y_veg))
+#   }
+# }
+# 
+# # measure of distance; remove MI:LP first
+# dist_mat=rdist(as.matrix(centers_pls), as.matrix(centers_comp)/rescale)
+# dist_mat[dist_mat < 1e-6] = 0
+# 
+# foo=unlist(apply(dist_mat, 2, function(x) any(x == 0)))
+# 
+# bar = r_comp[foo, ]
+# 
+# 
+# resids = sqrt(rowSums((r_pls - bar)^2))
+# 
+# dat = data.frame(resids=resids, x=centers_pls$x*rescale, y=centers_pls$y*rescale)
+# 
+# p <- ggplot() + geom_tile(data=dat, aes(x=x, y=y, fill=resids)) + 
+#   scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
+# #scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
+# p <- add_map_albers(p, map_data=us.fort, limits)
+# p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
+# print(p)
+# 
+# # try binning?
+# resids_taxon = (r_pls - bar)#^2
+# colnames(resids_taxon) = taxa
+# dat_taxon = data.frame(resids_taxon, x=centers_pls$x*rescale, y=centers_pls$y*rescale)
+# dat_taxon_melt = melt(dat_taxon, id=c('x', 'y'))
+# 
+# 
+# p <- ggplot() + geom_tile(data=dat_taxon_melt, aes(x=x, y=y, fill=value)) + 
+#   scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
+# #scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
+# p <- p + facet_grid(~variable)
+# p <- add_map_albers(p, map_data=us.fort, limits)
+# p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
+# print(p)
+# 
+# # probably should normalize somehow...
+# dat_taxon_melt = dat_taxon_melt[which(abs(dat_taxon_melt$value)>0.5), ]
+# p <- ggplot() + geom_tile(data=dat_taxon_melt, aes(x=x, y=y, fill=value)) + 
+#   scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
+# #scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
+# p <- p + facet_grid(~variable)
+# p <- add_map_albers(p, map_data=us.fort, limits)
+# p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
+# print(p)
+# 
+# ####################################################################################################
+# # chunk: see if we can compare preds on 3by with comp
+# ####################################################################################################
+# # measure of distance; remove MI:LP first
+# dist_mat=rdist(as.matrix(centers_veg), as.matrix(centers_comp)/rescale)
+# dist_mat[dist_mat < 1e-6] = 0
+# 
+# foo=unlist(apply(dist_mat, 1, function(x) which.min(x)))
+# 
+# bar = r_comp[foo, ]
+# centers_comp_sub = centers_comp[foo,]
+# 
+# 
+# resids = sqrt(rowSums((r_mean - bar)^2))
+# 
+# dat = data.frame(resids=resids, x=centers_comp_sub[,1], y=centers_comp_sub[,2])
+# 
+# p <- ggplot() + geom_tile(data=dat, aes(x=x, y=y, fill=resids)) + 
+#   scale_fill_gradientn(colours=tim.colors(), name="Residuals") + coord_fixed() #+
+# #scale_x_continuous(limits$xlims*1000) + scale_y_continuous(limits$ylims*1000)
+# p <- add_map_albers(p, map_data=us.fort, limits)
+# p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.3)), strip.text.x = element_text(size = rel(1.0)))
+# print(p)
+# 
+# ####################################################################################################
+# # chunk: residuals
+# ####################################################################################################
+# 
+# # N_cores and centers_polU broken for split domain data....
+# idx.keep  = c(1,2,length(ages)/2,T)
+# # plot_core_locations(y, centers_polU, centers_pls, ages, limits)
+# plot_core_locations_select(y, centers_pol, centers_pls, ages, idx.keep, limits, suff=suff_figs, fpat=subDir)
 
 # # ####################################################################################################
 # # # chunk: plot predicted and observed proportions in same frame
