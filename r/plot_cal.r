@@ -110,12 +110,12 @@ print('Plotted process')
 plot_data_maps(y_veg, centers=centers_pls, taxa=taxa, ages, N_pls, K, T, thresh=0.5, limits, suff=suff_figs, save_plots=save_plots)
 plot_data_maps_binned(y_veg, centers=centers_pls, taxa=taxa, ages, N_pls, K, T, breaks, limits, suff=suff_figs, save_plots=save_plots)
 
-####################################################################################################
-# chunk: plot composition estimates
-####################################################################################################
-suff=paste0('comp_', suff_figs)
-plot_data_maps(r_comp, centers=centers_comp/rescale, taxa=taxa, ages, N_comp, K, T, thresh=0.5, limits, suff=suff, save_plots=save_plots)
-plot_data_maps_binned(r_comp, centers=centers_comp/rescale, taxa=taxa, ages, N_comp, K, T, breaks, limits, suff=suff, save_plots=save_plots)
+# ####################################################################################################
+# # chunk: plot composition estimates
+# ####################################################################################################
+# suff=paste0('comp_', suff_figs)
+# plot_data_maps(r_comp, centers=centers_comp/rescale, taxa=taxa, ages, N_comp, K, T, thresh=0.5, limits, suff=suff, save_plots=save_plots)
+# plot_data_maps_binned(r_comp, centers=centers_comp/rescale, taxa=taxa, ages, N_comp, K, T, breaks, limits, suff=suff, save_plots=save_plots)
 
 # ####################################################################################################
 # # chunk: residuals
