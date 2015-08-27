@@ -24,20 +24,20 @@ save_plots = TRUE
 #                     suff_figs = 'KW_KGAMMA_G')
 
 # 3by runs
-PL = list(suff_dat  = '12taxa_6341cells_120knots_cal_PL_umw_3by_v0.3',
-          suff_fit  = '12taxa_6341cells_120knots_cal_PL_umw_3by',
+PL = list(suff_dat  = '12taxa_699cells_120knots_cal_PL_umw_3by_v0.3',
+          suff_fit  = '12taxa_699cells_120knots_cal_PL_umw_3by',
           suff_figs = 'PL')
 
-G  = list(suff_dat  = '12taxa_6341cells_120knots_cal_G_umw_3by_v0.3', 
-          suff_fit  = '12taxa_6341cells_120knots_cal_G_umw_3by', 
+G  = list(suff_dat  = '12taxa_699cells_120knots_cal_G_umw_3by_v0.3', 
+          suff_fit  = '12taxa_699cells_120knots_cal_G_umw_3by', 
           suff_figs = 'G')
 
-KW_KGAMMA_PL = list(suff_dat  = '12taxa_6341cells_120knots_cal_KW_KGAMMA_PL_umw_3by_v0.3',
-                    suff_fit  = '12taxa_6341cells_120knots_cal_KW_KGAMMA_PL_umw_3by',
+KW_KGAMMA_PL = list(suff_dat  = '12taxa_699cells_120knots_cal_KW_KGAMMA_PL_umw_3by_v0.3',
+                    suff_fit  = '12taxa_699cells_120knots_cal_KW_KGAMMA_PL_umw_3by',
                     suff_figs = 'KW_KGAMMA_PL')
 
-KW_KGAMMA_G  = list(suff_dat  = '12taxa_6341cells_120knots_cal_KW_KGAMMA_G_umw_3by_v0.3', 
-                    suff_fit  = '12taxa_6341cells_120knots_cal_KW_KGAMMA_G_umw_3by',
+KW_KGAMMA_G  = list(suff_dat  = '12taxa_699cells_120knots_cal_KW_KGAMMA_G_umw_3by_v0.3', 
+                    suff_fit  = '12taxa_699cells_120knots_cal_KW_KGAMMA_G_umw_3by',
                     suff_figs = 'KW_KGAMMA_G')
 
 runs = list(PL, G, KW_KGAMMA_PL, KW_KGAMMA_G)
