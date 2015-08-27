@@ -14,7 +14,7 @@ source('r/mugp.r')
 # edit this file to process different runs
 source('r/runs_cal.r')
 
-load('data/comp_data_12taxa_mid_ALL_v0.3.rdata')
+source('data/comp_data_12taxa_mid_ALL_v0.3.rdata')
 
 for (run in runs){
 
@@ -91,7 +91,7 @@ for (run in runs){
 
   summary_diff_g_mug
   
-  print('Assessed nugget')
+  #print('Assessed nugget')
 
-  source('r/pred_plot.r')
+  source('r/plot_cal.r')
 }
