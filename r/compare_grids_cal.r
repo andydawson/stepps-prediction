@@ -20,14 +20,15 @@ source('r/mugp.r')
     score = rep(0, ncells)
     for (n in 1:ncells){
 #     score[n] = score[n] + sum((preds[n,] - comp[n,])^2)#sqrt(sum((preds[n,] - comp[n,])^2))
-      score[n] = score[n] + sqrt(sum((preds[n,] - comp[n,])^2))
-#      score[n] = score[n] + sqrt((preds[n,7] - comp[n,7])^2)
+#       score[n] = score[n] + sqrt(sum((preds[n,] - comp[n,])^2))
+     score[n] = score[n] + sqrt((preds[n,10] - comp[n,10])^2)
     }
   
     return(score)
   }
 
-pls.raw = data.frame(read.table(file='../stepps-data/data/composition/composition_v0.4.csv' , sep=",", row.names=NULL, header=TRUE))
+pls.raw = data.frame(read.table(file='../stepps-data/data/composition/composition_v0.3.csv' , sep=",", row.names=NULL, header=TRUE))
+# pls.raw = data.frame(read.table(file='../stepps-data/data/composition/composition_v0.4.csv' , sep=",", row.names=NULL, header=TRUE))
 colnames(pls.raw) = tolower(colnames(pls.raw))
 
 # figure out why chestnut and atlantic.white.cedar are all NA!
@@ -46,14 +47,13 @@ pls_dat_collapse  = sapply(unique(colnames(pls_dat)),
 comp_counts = data.frame(pls_dat_collapse[,sort(colnames(pls_dat_collapse))])
 comp_meta   = pls.raw[,1:(taxa.start.col-1)]
 
-# don't want michigan LP; pare down to remove michigan south (doesn't remove all of LP); fix later
 comp_counts = comp_counts[which(comp_meta$region %in% c('michigan_north', 'wisconsin', 'minnesota')),]
 comp_meta = comp_meta[which(comp_meta$region %in% c('michigan_north', 'wisconsin', 'minnesota')),]
 colnames(comp_meta)[colnames(comp_meta) == 'region'] = 'state'
 
 comp_meta = split_mi(comp_meta)
-comp_counts = comp_counts[which(comp_meta$state %in% c('michigan_north', 'wisconsin', 'minnesota')),]
-comp_meta = comp_meta[which(comp_meta$state %in% c('michigan_north', 'wisconsin', 'minnesota')),]
+comp_counts = comp_counts[which(comp_meta$state2 %in% c('michigan:north', 'wisconsin', 'minnesota')),]
+comp_meta = comp_meta[which(comp_meta$state2 %in% c('michigan:north', 'wisconsin', 'minnesota')),]
 
 # edit this file to process different runs
 source('r/runs_cal_3by.r')
@@ -66,7 +66,8 @@ subDir <- paste('figures/compare_grids')
 create_figure_path(subDir)
 # source('data/comp_data_12taxa_mid_ALL_v0.3.rdata')
 
-score_dat = data.frame(score=numeric(0), x=numeric(0), y=numeric(0), model=character(0))
+# score_pred = data.frame(score=numeric(0), x=numeric(0), y=numeric(0), model=character(0))
+score_comp = data.frame(score=numeric(0), x=numeric(0), y=numeric(0), model=character(0), grid=character(0))
 
 for (run1by in runs1by){
   
@@ -87,6 +88,8 @@ for (run1by in runs1by){
 
   grids = c('1by', '3by')
   for (grid in grids){
+    
+    #grid = '1by'
 
     N = get(paste0('N_', grid))
     run = get(paste0('run', grid))$suff_fit
@@ -106,34 +109,37 @@ for (run1by in runs1by){
 
   }
   
-  # match each 1by center with a 3by estimate
-  r_mean_3by_res = matrix(NA, nrow=N_1by*T, ncol=K)
-  centers_res    = matrix(NA, nrow=N_1by*T, ncol=2)
-  colnames(centers_res) = c('x', 'y')  
-
-  for (i in 1:N_1by){
-      d_across = rdist(as.matrix(centers_veg_1by[i,]), as.matrix(centers_veg_3by))
-      r_mean_3by_res[i * T,] = r_mean_3by[which.min(d_across),]
-      centers_res[i,]    = as.matrix(centers_veg_1by[i,])
-  }
-
-  score    = compute_distance(r_mean_1by, r_mean_3by_res)
-  score_dat = rbind(score_dat, data.frame(score=score, centers_res, model = suff_figs))
-
+#   # match each 1by center with a 3by estimate
+#   r_mean_3by_res = matrix(NA, nrow=N_1by*T, ncol=K)
+#   centers_res    = matrix(NA, nrow=N_1by*T, ncol=2)
+#   colnames(centers_res) = c('x', 'y')  
+# 
+#   for (i in 1:N_1by){
+#       d_across = rdist(as.matrix(centers_veg_1by[i,]), as.matrix(centers_veg_3by))
+#       r_mean_3by_res[i * T,] = r_mean_3by[which.min(d_across),]
+#       centers_res[i,]    = as.matrix(centers_veg_1by[i,])
+#   }
+# 
+#   score      = compute_distance(r_mean_1by, r_mean_3by_res)
+#   score_pred = rbind(score_pred, data.frame(score=score, centers_res, model = suff_figs))
 
   # match each estimate with PLS data
-  veg_1by_comp = matrix(NA, nrow=N_1by*T, ncol=K)
-  r_mean_3by_comp = 
-  colnames(centers_res) = c('x', 'y')  
+  r_mean_1by_comp = matrix(NA, nrow=N_1by*T, ncol=K)
+  r_mean_3by_comp = matrix(NA, nrow=N_1by*T, ncol=K)
 
   for (i in 1:N_1by){
-      d_across = rdist(as.matrix(centers_veg_1by[i,]), as.matrix(comp_meta[,1:2]))
-      veg_1by_comp[i * T,] = comp_counts[which.min(d_across),]
-      centers_comp[i,]    = as.matrix(centers_veg_1by[i,])
+      d_across = rdist(as.matrix(comp_meta[i,1:2]), as.matrix(centers_veg_1by)*1e6)
+      r_mean_1by_comp[i * T,] = r_mean_1by[which.min(d_across),]
+      
+      d_across = rdist(as.matrix(comp_meta[i,1:2]), as.matrix(centers_veg_3by)*1e6)
+      r_mean_3by_comp[i * T,] = r_mean_3by[which.min(d_across),]
   }
 
-  score    = compute_distance(r_mean_1by, r_mean_3by_res)
-  score_dat = rbind(score_dat, data.frame(score=score, centers_res, model = suff_figs))
+  score = compute_distance(comp_counts, r_mean_1by_comp)
+  score_comp = rbind(score_comp, data.frame(score=score, comp_meta[,1:2], model = suff_figs, grid = '1by'))
+  
+  score = compute_distance(comp_counts, r_mean_3by_comp)
+  score_comp = rbind(score_comp, data.frame(score=score, comp_meta[,1:2], model = suff_figs, grid = '3by'))
 
 }
 
@@ -141,7 +147,7 @@ for (run1by in runs1by){
 
 limits = get_limits(centers_veg_1by)
 
-p <- ggplot() + geom_tile(data=score_dat, aes(x=x, y=y, fill=score)) + 
+p <- ggplot() + geom_tile(data=score_pred, aes(x=x, y=y, fill=score)) + 
   scale_fill_gradientn(colours=tim.colors(), name="Distance") + coord_fixed() 
 #p <- add_map_albers(p, map_data=us.fort, limits)
 #p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.4)), 
@@ -157,6 +163,25 @@ ggsave(p, file=fname, width=14)
 sys_str = paste("pdfcrop", fname, fname, sep=' ')
 system(sys_str)
 
+aggregate(. ~ model + grid, data=score_comp, FUN=sum)
+
+limits = get_limits(centers_veg_1by)
+
+p <- ggplot() + geom_tile(data=score_comp, aes(x=x, y=y, fill=score)) + 
+  scale_fill_gradientn(colours=tim.colors(), name="Distance") + coord_fixed() 
+#p <- add_map_albers(p, map_data=us.fort, limits)
+#p <- theme_clean(p) + theme(strip.text.y = element_text(size = rel(1.4)), 
+#                            strip.text.x = element_text(size = rel(1.4)),
+#                            legend.title=element_text(size = rel(1.1)),
+#                            legend.text=element_text(size = rel(1.0)))
+#p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+# p <- p + facet_grid(model~.)
+p <- p + facet_grid(grid~model)
+print(p)
+fname = paste0(subDir, '/distance_pred_PLS_pine.pdf')
+ggsave(p, file=fname, width=14)
+sys_str = paste("pdfcrop", fname, fname, sep=' ')
+system(sys_str)
 
  
 
