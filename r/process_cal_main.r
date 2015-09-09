@@ -1,3 +1,4 @@
+# for some reason this code works with R-3.1.2 and not 3.2.0; fix later
 library(Rcpp)
 library(inline)
 library(ggplot2)
@@ -42,6 +43,8 @@ for (run in runs){
   # N       = nrow(d_inter)
   # N_knots = ncol(d_inter)
   
+  
+  
   process_out = build_r(post_dat, N, T, K)
   print('Built r')
   
@@ -53,6 +56,13 @@ for (run in runs){
   W = K-1
   N_pars = 3*(K-1) + 1
   write_par_vals(post_dat, taxa, subDir, N_pars)
+  
+  # compute ess and write to file
+  sink(sprintf('%s/ess.txt', subDir), type='output')
+  print('Effective samples sizes : ')
+  ess_all = rowSums(sapply(post_dat$post[,1:N_pars], function(y) apply(y[,1,], 2, function(x) ess_rfun(x))))
+  print(as.matrix(ess_all[!(sapply(strsplit(names(ess_all),'\\['), function(x) x[[1]]) == 'log_lik')]))
+  sink()
   
   #   trace_plot_pars(post, N_knots, T, N_pars, taxa=taxa, suff=suff, save_plots=save_plots)
   #   trace_plot_mut(post, N_knots, T, N_pars, mean_type='other', suff=suff, save_plots=save_plots)
