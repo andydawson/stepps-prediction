@@ -88,8 +88,8 @@ for (run in runs){
 
 limits = get_limits(brier_fake[,2:3])
 
-levels(brier_fake$type) <- c('Base PL', 'Base G', 'Variable PL', 'Variable G')
-brier_fake$type <- factor(brier_fake$type, levels=c('Base G', 'Base PL', 'Variable G','Variable PL'))
+levels(brier_fake$type) <- c('Base PLK', 'Base GK', 'Variable PLK', 'Variable GK')
+brier_fake$type <- factor(brier_fake$type, levels=c('Base GK', 'Base PLK', 'Variable GK','Variable PLK'))
 
 
 brier_sums = aggregate(brier_score~type, sum, data=brier_fake)
