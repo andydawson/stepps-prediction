@@ -75,7 +75,7 @@ namespace pred_model_namespace {
     vector_d Q;
     row_vector_d QT;
 
-    static double const mu_std = 20;
+    static double const mu_std = 5; // used to be 20!
 
   public:
     pred_model(stan::io::var_context& context__,
