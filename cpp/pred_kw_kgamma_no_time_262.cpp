@@ -53,7 +53,7 @@ private:
     vector_d sum_w_pot;
     vector_d phi;
     vector<int> idx_cores;
-    //matrix_d d;
+    //matrix_d d_pol;
     matrix_d d_knots;
     matrix_d d_inter;
     vector<matrix_d> w;
@@ -191,13 +191,13 @@ public:
         for (size_t i_0__ = 0; i_0__ < idx_cores_limit_0__; ++i_0__) {
             idx_cores[i_0__] = vals_i__[pos__++];
         }
-        // context__.validate_dims("data initialization", "d", "matrix_d", context__.to_vec(N,N));
+        // context__.validate_dims("data initialization", "d_pol", "matrix_d", context__.to_vec(N_cores,N));
         // stan::math::validate_non_negative_index("d", "N", N);
-        // stan::math::validate_non_negative_index("d", "N", N);
-        // d = matrix_d(N,N);
+        // stan::math::validate_non_negative_index("d", "N_cores", N_cores);
+        // d = matrix_d(N_cores,N);
         // vals_r__ = context__.vals_r("d");
         // pos__ = 0;
-        // size_t d_m_mat_lim__ = N;
+        // size_t d_m_mat_lim__ = N_cores;
         // size_t d_n_mat_lim__ = N;
         // for (size_t n_mat__ = 0; n_mat__ < d_n_mat_lim__; ++n_mat__) {
         //     for (size_t m_mat__ = 0; m_mat__ < d_m_mat_lim__; ++m_mat__) {
@@ -759,9 +759,11 @@ public:
 	    int idx_core = (idx_cores[i] - 1) * T + t;
 	    r_new(i * T + t, k) = gamma[k] * r(idx_core, k);
 	    for (int j = 0; j < N; ++j) {
-	      if (d(idx_cores[i]-1,j) > 0) {
+	      if (j != idx_cores[i] -1) {
+	      //if (d_pol(idx_cores[i]-1,j) > 0) {
 		//std::cout << "w[k](i,j) : " << w[k](i,j) << std::endl;
 		out_sum(i * T + t, k) += res * res * w[k](i,j) * r(j * T + t, k);
+		//}
 	      }
 	    }
 
