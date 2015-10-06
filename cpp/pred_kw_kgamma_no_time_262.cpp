@@ -53,7 +53,7 @@ private:
     vector_d sum_w_pot;
     vector_d phi;
     vector<int> idx_cores;
-    matrix_d d;
+    //matrix_d d;
     matrix_d d_knots;
     matrix_d d_inter;
     vector<matrix_d> w;
@@ -191,19 +191,19 @@ public:
         for (size_t i_0__ = 0; i_0__ < idx_cores_limit_0__; ++i_0__) {
             idx_cores[i_0__] = vals_i__[pos__++];
         }
-        context__.validate_dims("data initialization", "d", "matrix_d", context__.to_vec(N,N));
-        stan::math::validate_non_negative_index("d", "N", N);
-        stan::math::validate_non_negative_index("d", "N", N);
-        d = matrix_d(N,N);
-        vals_r__ = context__.vals_r("d");
-        pos__ = 0;
-        size_t d_m_mat_lim__ = N;
-        size_t d_n_mat_lim__ = N;
-        for (size_t n_mat__ = 0; n_mat__ < d_n_mat_lim__; ++n_mat__) {
-            for (size_t m_mat__ = 0; m_mat__ < d_m_mat_lim__; ++m_mat__) {
-                d(m_mat__,n_mat__) = vals_r__[pos__++];
-            }
-        }
+        // context__.validate_dims("data initialization", "d", "matrix_d", context__.to_vec(N,N));
+        // stan::math::validate_non_negative_index("d", "N", N);
+        // stan::math::validate_non_negative_index("d", "N", N);
+        // d = matrix_d(N,N);
+        // vals_r__ = context__.vals_r("d");
+        // pos__ = 0;
+        // size_t d_m_mat_lim__ = N;
+        // size_t d_n_mat_lim__ = N;
+        // for (size_t n_mat__ = 0; n_mat__ < d_n_mat_lim__; ++n_mat__) {
+        //     for (size_t m_mat__ = 0; m_mat__ < d_m_mat_lim__; ++m_mat__) {
+        //         d(m_mat__,n_mat__) = vals_r__[pos__++];
+        //     }
+        // }
         context__.validate_dims("data initialization", "d_knots", "matrix_d", context__.to_vec(N_knots,N_knots));
         stan::math::validate_non_negative_index("d_knots", "N_knots", N_knots);
         stan::math::validate_non_negative_index("d_knots", "N_knots", N_knots);
