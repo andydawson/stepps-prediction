@@ -51,7 +51,7 @@ namespace pred_model_namespace {
     double sum_w_pot;
     vector_d phi;
     vector<int> idx_cores;
-    matrix_d d;
+    //matrix_d d;
     matrix_d d_knots;
     matrix_d d_inter;
     matrix_d w;
@@ -197,19 +197,19 @@ namespace pred_model_namespace {
         idx_cores[i_0__] = vals_i__[pos__++];
       }
 
-      context__.validate_dims("data initialization", "d", "matrix_d", context__.to_vec(N,N));
-      stan::math::validate_non_negative_index("d", "N", N);
-      stan::math::validate_non_negative_index("d", "N", N);
-      d = matrix_d(N,N);
-      vals_r__ = context__.vals_r("d");
-      pos__ = 0;
-      size_t d_m_mat_lim__ = N;
-      size_t d_n_mat_lim__ = N;
-      for (size_t n_mat__ = 0; n_mat__ < d_n_mat_lim__; ++n_mat__) {
-        for (size_t m_mat__ = 0; m_mat__ < d_m_mat_lim__; ++m_mat__) {
-          d(m_mat__,n_mat__) = vals_r__[pos__++];
-        }
-      }
+      // context__.validate_dims("data initialization", "d", "matrix_d", context__.to_vec(N,N));
+      // stan::math::validate_non_negative_index("d", "N", N);
+      // stan::math::validate_non_negative_index("d", "N", N);
+      // d = matrix_d(N,N);
+      // vals_r__ = context__.vals_r("d");
+      // pos__ = 0;
+      // size_t d_m_mat_lim__ = N;
+      // size_t d_n_mat_lim__ = N;
+      // for (size_t n_mat__ = 0; n_mat__ < d_n_mat_lim__; ++n_mat__) {
+      //   for (size_t m_mat__ = 0; m_mat__ < d_m_mat_lim__; ++m_mat__) {
+      //     d(m_mat__,n_mat__) = vals_r__[pos__++];
+      //   }
+      // }
 
       context__.validate_dims("data initialization", "d_knots", "matrix_d", context__.to_vec(N_knots,N_knots));
       stan::math::validate_non_negative_index("d_knots", "N_knots", N_knots);
@@ -856,7 +856,8 @@ namespace pred_model_namespace {
 	  int idx_core = (idx_cores[i] - 1) * T + t;
 	  r_new.row(i * T + t) = gamma * r.row(idx_core);
 	  for (int j = 0; j < N; ++j) {
-	    if (d(idx_cores[i]-1,j) > 0) {
+	     if (j != idx_cores[i] -1) {
+	       //if (d(idx_cores[i]-1,j) > 0) {
 
 	      // std::cout << "w(i,j) : " << w(i,j) << std::endl;
 	      out_sum.row(i * T + t) += res * res * w(i,j) * r.row(j * T + t);
