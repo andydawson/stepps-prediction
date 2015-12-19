@@ -30,7 +30,7 @@ models  = [
 
 submit = {
     'crc': 'qsub',
-    'scf-slurm': 'srun',
+    'scf-slurm': 'sbatch',
     }
 
 #
