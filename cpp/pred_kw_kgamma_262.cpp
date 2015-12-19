@@ -86,7 +86,7 @@ private:
     static double const lambda_lb = 0;
     static double const lambda_ub = 1;
 
-    static double const mu_std = 5; // used to be 20!
+    static double const mu_std = 2; //from 5 // used to be 20!
 
 public:
     pred_model(stan::io::var_context& context__,
