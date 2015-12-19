@@ -6,7 +6,7 @@ from os.path import join as pjoin
 # config
 #
 
-system  = 'crc'#'scf-slurm'
+system  = 'scf-slurm' #'crc'
 models  = [
    { 'model':      '120knots_50to2050ybp_KW_KGAMMA_G_umw_3by_v0.4_bacon_mean',
      'short':      'pred_kw_kgamma_g',
