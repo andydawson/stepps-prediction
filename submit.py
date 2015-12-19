@@ -8,7 +8,7 @@ from os.path import join as pjoin
 
 system  = 'crc'#'scf-slurm'
 models  = [
-   { 'model':      '120knots_50to2050ybp_KW_KGAMMA_G_umw_3by_v0.4_bacon',
+   { 'model':      '120knots_50to2050ybp_KW_KGAMMA_G_umw_3by_v0.4_bacon_mean',
      'short':      'pred_kw_kgamma_g',
      'exe':        'pred_kw_kgamma_262.exe',
      'cpp':        'pred_kw_kgamma_262.cpp',   
@@ -17,7 +17,7 @@ models  = [
      'save_warmup': 1,
      'threads':     12,
    },
-    { 'model':      '120knots_50to2050ybp_KW_KGAMMA_PL_umw_3by_v0.4_bacon',
+    { 'model':      '120knots_50to2050ybp_KW_KGAMMA_PL_umw_3by_v0.4_bacon_mean',
       'short':      'pred_kw_kgamma_pl',
       'exe':        'pred_kw_kgamma_262.exe',
       'cpp':        'pred_kw_kgamma_262.cpp',
