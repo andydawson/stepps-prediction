@@ -42,7 +42,7 @@ with open(system + '.sh', 'r') as f:
 
 with open('submit-all.sh', 'w') as all:
     for model, run in itertools.product(models, range(2)):
-        fname = pjoin(model['model'], 'run' + str(run+1), 'submit.sh')
+        fname = pjoin('runs', model['model'], 'run' + str(run+1), 'submit.sh')
         with open(fname, 'w') as f:
             f.write(sub.format(run='run'+str(run+1), **model))
         print "wrote:", fname
