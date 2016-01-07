@@ -161,7 +161,7 @@ public:
         for (size_t i_vec__ = 0; i_vec__ < eta_i_vec_lim__; ++i_vec__) {
             eta[i_vec__] = vals_r__[pos__++];
         }
-	lambda = eta;
+	lambda = rho;
         context__.validate_dims("data initialization", "gamma", "double", context__.to_vec(K));
         gamma = vector_d(K);
         vals_r__ = context__.vals_r("gamma");
