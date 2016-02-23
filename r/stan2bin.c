@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 #define CBUFLEN  1024
-#define LBUFLEN  (64*1024*1024)
+#define LBUFLEN  (256*1024*1024)
 #define PARAMLEN 64
 
 int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
@@ -24,18 +24,20 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
   int   i;
   int   ntok;
   char *tok;
-  int   zeros[] = { 0, 0, 0 };
+  int   header[] = { -1, 0, 0, 0 };
+  int   nline;
 
   char *params = NULL;
   float *values = NULL;
   int nparams = 0;
   int nwarmup = 0;
   int nsamples = 0;
+  int diag = 0;
 
   /*
-   * write 3 zeros (counts), will overwrite with proper dimensions later
+   * write header (counts), will overwrite zeros with proper dimensions later
    */
-  fwrite(zeros, sizeof(int), 3, rdata);
+  fwrite(header, sizeof(int), 4, rdata);
 
   /*
    * parse stan output
@@ -44,7 +46,11 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
    * 2. switch to 'samples' mode when we see "# Adaptation terminated"
    */
 
+  nline = 0;
   while (fgets(lbuf, LBUFLEN, stan) != NULL) {
+    nline++;
+
+    if (strlen(lbuf) <= 0) continue;
 
     if (strncmp(lbuf, "lp__", 4) == 0) {
 
@@ -82,6 +88,31 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
 	strncpy(params+ntok*PARAMLEN, tok, PARAMLEN-1);
       }
 
+    } else if (diag == 1) {
+
+      /* 
+       * parse diagonal and save
+       */
+      for (ntok=0, tok=strtok(lbuf+2, ","); tok != NULL; ntok++, tok=strtok(NULL, ",\n")) {
+	if (ntok >= nparams) {
+	  fprintf(stderr, "Skipping excess diagonal entries on line %d of STAN output file.\n", nline);
+	  break;
+	}
+	values[ntok] = (float) atof(tok);
+      }
+      fwrite(values, sizeof(float), nparams, rdata);
+
+      diag = 0;
+
+    } else if (strncmp(lbuf, "# Diago", 7) == 0) {
+
+      diag = 1;
+      
+    } else if (strncmp(lbuf, "# Step size = ", 14) == 0) {
+
+      float step_size = atof(lbuf+14);
+      fwrite(&step_size, sizeof(float), 1, rdata);
+
     } else if (strncmp(lbuf, "# Adapt", 7) == 0) {
 
       /*
@@ -93,12 +124,21 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
 
       printf("nwarmup:  %d\n", nwarmup);
 
+    } else if (strncmp(lbuf, "#  Elapsed", 10) == 0) {
+
+      break;
+
     } else if ((lbuf[0] != '#') && isgraph(lbuf[0])) {
 
       /*
        * parse sample and write
        */
       for (ntok=0, tok=strtok(lbuf, ","); tok != NULL; ntok++, tok=strtok(NULL, ",\n")) {
+	if (ntok >= nparams) {
+	  //	  fprintf(stderr, "ERROR: Excess parameters on line %d of output file (%d/%d).\n", nline, ntok, nparams);
+	  fprintf(stderr, "Skipping excess parameters on line %d of STAN output file.\n", nline);
+	  break;
+	}
 	values[ntok] = (float) atof(tok);
       }
       if (ntok == nparams) {
@@ -107,12 +147,13 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
       }
 
     }
+
   }
 
   printf("nsamples: %d\n", nsamples);
 
   /*
-   * write parameter names and dimensions
+   * write parameter names, diagonal values, and dimensions
    */
 
   for (i=0; i<nparams; i++) {
@@ -124,7 +165,7 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
     fwrite(tok, sizeof(char), strlen(tok)+1, rdata);
   }
 
-  fseek(rdata, 0L, SEEK_SET);
+  fseek(rdata, sizeof(int), SEEK_SET);
   fwrite(&nwarmup, sizeof(int), 1, rdata);
   fwrite(&nsamples, sizeof(int), 1, rdata);
   fwrite(&nparams, sizeof(int), 1, rdata);
