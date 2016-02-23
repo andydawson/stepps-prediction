@@ -1,10 +1,14 @@
 /*
  * Parse a STAN CSV file and save as a binary.  File format is:
  *
+ * magic      - int, 1: negative version counter
  * nwarmup    - int, 1: number of warmup samples
  * nsamples   - int, 1: number of samples
  * nparams    - int, 1: number of parameters
+ * ndiag      - int, 1: number of diagonal entries
  * warmup     - float, nparams*nwarmup: warmup samples, row major
+ * step size  - float: step size
+ * diagonal   - float, ndiag: diagonal entries of inverse mass matrix 
  * samples    - float, nparams*nsamples: samples, row major
  * parameters - char, nparams: parameter names (null terminated C strings)
  */
@@ -24,7 +28,7 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
   int   i;
   int   ntok;
   char *tok;
-  int   header[] = { -1, 0, 0, 0 };
+  int   header[] = { -1, 0, 0, 0, 0 };
   int   nline;
 
   char *params = NULL;
@@ -32,12 +36,13 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
   int nparams = 0;
   int nwarmup = 0;
   int nsamples = 0;
+  int ndiag = 0;
   int diag = 0;
 
   /*
    * write header (counts), will overwrite zeros with proper dimensions later
    */
-  fwrite(header, sizeof(int), 4, rdata);
+  fwrite(header, sizeof(int), 5, rdata);
 
   /*
    * parse stan output
@@ -64,7 +69,7 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
       }
       nparams = ntok;
 
-      printf("nparams:  %d\n", nparams);
+      printf("nparams:  %d (%d)\n", nparams-6, nparams);
 
       // allocate buffers
       params = malloc(nparams*PARAMLEN);
@@ -100,7 +105,9 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
 	}
 	values[ntok] = (float) atof(tok);
       }
-      fwrite(values, sizeof(float), nparams, rdata);
+      ndiag = ntok;
+
+      fwrite(values, sizeof(float), ndiag, rdata);
 
       diag = 0;
 
@@ -169,6 +176,7 @@ int stan2bin(FILE *stan, FILE *rdata, char *lbuf)
   fwrite(&nwarmup, sizeof(int), 1, rdata);
   fwrite(&nsamples, sizeof(int), 1, rdata);
   fwrite(&nparams, sizeof(int), 1, rdata);
+  fwrite(&ndiag, sizeof(int), 1, rdata);
 
   free(values);
   free(params);

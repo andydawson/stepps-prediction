@@ -23,7 +23,7 @@ read_stanbin0 <- function(fname, burn=-1) {
     warmup = t(warmup)
   }
 
-  list(params=params, warmup=warmup, samples=t(samples), par_names=short, nsamples=nsamples)
+  list(params=params, warmup=warmup, samples=t(samples), par_names=short, nsamples=nsamples, stepsize=0, diagonal=NULL)
 }
 
 read_stanbin1 <- function(fname, burn=-1) {
@@ -32,9 +32,10 @@ read_stanbin1 <- function(fname, burn=-1) {
   nwarmup  = readBin(bin, "integer")
   nsamples = readBin(bin, "integer")
   nparams  = readBin(bin, "integer")
+  ndiag    = readBin(bin, "integer")
   warmup   = readBin(bin, "numeric", n=nwarmup*nparams, size=4)
   stepsize = readBin(bin, "numeric", n=1, size=4)
-  diagonal = readBin(bin, "numeric", n=nparams, size=4)
+  diagonal = readBin(bin, "numeric", n=ndiag, size=4)
   samples  = readBin(bin, "numeric", n=nsamples*nparams, size=4)
   params   = readBin(bin, "character", n=nparams)
   short    = readBin(bin, "character", n=nparams)
