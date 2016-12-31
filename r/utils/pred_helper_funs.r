@@ -20,7 +20,7 @@ cppFunction('
           }
     return c;
   }
-', verbose=TRUE)
+', verbose=TRUE, showOutput=TRUE)
 
 # r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
 # additive log_ratio transformation
@@ -39,6 +39,19 @@ return r;
   }
 ', verbose=TRUE)
 
+
+# additive log_ratio transformation
+cppFunction('
+  NumericMatrix sum2one_constraint_nb(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
+    //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
+    NumericMatrix r(N*T, K);
+    for (int k = 0; k<K; k++)
+      for (int j = 0; j<N*T; j++)
+        r(j,k) = exp(g(j,k))/(sum_exp_g(j));
+   
+return r;
+  }
+', verbose=TRUE)
 
 # # matrix vector mult
 # cppFunction('
@@ -80,12 +93,17 @@ load_stan_output <- function(suff_fit){
 
 
 build_r <- function(post_dat, N, T, K){
-
-  post      = post_dat$post
+  
+  if (length(dim(post_dat$post)) == 3) {
+    post      = post_dat$post[,1,]
+  } else {
+    post      = post_dat$post
+  }
+  
   par_names = post_dat$par_names
   
   W       = K-1
-  niter   = dim(post[,1,])[1] 
+  niter   = nrow(post) 
   
   g      = array(NA, dim=c(N*T, W, niter))
   r      = array(NA, dim=c(N*T, K, niter))
@@ -98,7 +116,7 @@ build_r <- function(post_dat, N, T, K){
     print(k)
     
     g_k_cols = seq(k, T*N*W, by=W)
-    g[,k,]   = t(post[,1,g_cols[g_k_cols]])    
+    g[,k,]   = t(post[,g_cols[g_k_cols]])    
 
   }
   
@@ -133,8 +151,69 @@ build_r <- function(post_dat, N, T, K){
   return(list(r=r, g=g))
 }
 
+build_r_nb <- function(post_dat, N, T, K){
+  
+  if (length(dim(post_dat$post)) == 3) {
+    post      = post_dat$post[,1,]
+  } else {
+    post      = post_dat$post
+  }
+  
+  par_names = post_dat$par_names
+  
+  niter   = nrow(post) 
+  
+  g      = array(NA, dim=c(N*T, K, niter))
+  r      = array(NA, dim=c(N*T, K, niter))
+  
+  # fix the stan2bin!
+  g_cols = which(par_names == 'g')#-6
+  
+  for (k in 1:K){
+    
+    print(k)
+    
+    g_k_cols = seq(k, T*N*K, by=K)
+    g[,k,]   = t(post[,g_cols[g_k_cols]])    
+    
+  }
+  
+  print("Log-ratio transforming g")
+  
+  for (i in 1:niter){
+    
+    if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
+    
+    sum_exp_g = rowSums(exp(g[,,i]))
+    
+    r[,,i] <- sum2one_constraint_nb(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    # tk <- proc.time()
+    # print("NEW Build r:")
+    # print(tk-tj)
+  }
+  
+  return(list(r=r, g=g))
+}
 
 build_r_from_mu_g <- function(mu_g, N, T, K){
+  
+  niter = dim(mu_g)[3]
+  r     = array(NA, dim=c(N*T, K, niter))
+  
+  print("Log-ratio transforming g")
+  
+  for (i in 1:niter){
+    
+    if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
+    
+    sum_exp_g = rowSums(exp(mu_g[,,i]))       
+    r[,,i] <- sum2one_constraint(K, N, T, as.matrix(mu_g[,,i]), sum_exp_g) 
+  }
+  
+  return(r)
+}
+
+build_r_from_mu_g_nb <- function(mu_g, N, T, K){
 
   niter = dim(mu_g)[3]
   r     = array(NA, dim=c(N*T, K, niter))
@@ -146,11 +225,48 @@ build_r_from_mu_g <- function(mu_g, N, T, K){
     if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
     
     sum_exp_g = rowSums(exp(mu_g[,,i]))       
-    r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+    r[,,i] <- sum2one_constraint_nb(K, N, T, as.matrix(mu_g[,,i]), sum_exp_g) 
   }
   
   return(r)
 }
+
+# build_r <- function(post_dat, N, T, K){
+#   
+#   if (length(dim(post_dat$post)) == 3) {
+#     post      = post_dat$post[,1,]
+#   } else {
+#     post      = post_dat$post
+#   }
+#   
+#   par_names = post_dat$par_names
+#   
+#   W       = K-1
+#   niter   = nrow(post) 
+#   
+#   g      = array(NA, dim=c(N*T, W, niter))
+#   r      = array(NA, dim=c(N*T, K, niter))
+#   
+#   # fix the stan2bin!
+#   g_cols = which(par_names == 'g')#-6
+#   
+#   for (k in 1:W){
+#     
+#     print(k)
+#     g_k_cols = seq(k, T*N*W, by=W)
+#     g[,k,]   = t(post[,g_cols[g_k_cols]])    
+#   }
+#   for (i in 1:niter){
+#     
+#     if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
+#     
+#     sum_exp_g = rowSums(exp(g[,,i]))
+#     r[,,i] <- sum2one_constraint(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+#   }
+#   
+#   return(list(r=r, g=g))
+# }
+
 
 
 build_mu_g_serial <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od, mpp, mu0){
@@ -304,10 +420,15 @@ build_mu_g_serial <- function(post_dat, rho, eta, T, K, d, d_inter, d_knots, od,
 # write mean vals to file
 write_par_vals <- function(post_dat, taxa, subDir, N_pars){
   
-  post      = post_dat$post
+  if (length(dim(post_dat$post)) == 3) {
+    post      = post_dat$post[,1,]
+  } else {
+    post      = post_dat$post
+  }
+  
   par_names = post_dat$par_names
   
-  ess = apply(post[,1,c(1:N_pars,dim(post)[3])], 2, ess_rfun)
+  ess = apply(post[,c(1:N_pars,dim(post)[3])], 2, ess_rfun)
   
   # sink(sprintf('%s/%s/summary.txt', wd, path_figs1), type='output')
   sink(sprintf('%s/summary.txt', subDir), type='output')
@@ -500,6 +621,32 @@ get_corrections <- function(post_dat, rho, eta, T, K, d_inter, d_knots){
   return(list(adj_s=adj_s, adj_t=adj_t))
 }
 
+get_corrections_ar_nb <- function(post_dat, rho, eta, T, K, d_inter, d_knots){
+  
+  post      = post_dat$post
+  par_names = post_dat$par_names
+  
+  N     = nrow(d_inter)
+  niter = dim(post)[1] 
+  
+  adj_s = array(NA, dim=c(N, K))
+  adj_t = array(NA, dim=c(N, K))
+  
+  omega  = colMeans(post[,which(par_names == 'omega')])
+  
+  for (k in 1:W){
+    
+    C_s <- exp(-d_knots/rho[k])
+    c_s <- exp(-d_inter/rho[k])
+    C_s_inv = chol2inv(chol(C_s))
+    
+    adj_s[,k] = eta[k]^2 * (1 - diag(c_s %*% C_s_inv %*% t(c_s)))
+    adj_t[,k] = (1-omega[k]^2) * diag(c_s %*% C_s_inv %*% t(c_s))
+  }
+  
+  return(list(adj_s=adj_s, adj_t=adj_t))
+}
+
 
 get_mut <- function(post, W){
   
@@ -534,11 +681,14 @@ get_mu <- function(post, W){
   return(mu)
 }
 
+# build_pollen_counts(tmin=tmin, tmax=tmax, int=int, pollen_ts=pollen_ts3, taxa_all, taxa_sub, bacon)
 # build pollen counts
-build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, bacon){
+build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, age_model){
   
-  if (bacon) {
+  if (age_model=='bacon') {
     age_col = 'age_bacon'
+  } else if  (age_model=='bchron') {
+    age_col = 'age_bchron'
   } else {
     age_col = 'age_default'
   }
@@ -555,23 +705,32 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
   if (int > 0){
     #   breaks = seq(0,2500,by=int)
     breaks = seq(tmin,tmax,by=int)
+    breaks[1] = min(pollen_ts$age_bacon)
   
-    meta_pol  = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
-                                (pollen_ts[, age_col] <= tmax)),1:(taxa.start.col-1)]
-    counts = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
-                             (pollen_ts[, age_col] <= tmax)),taxa.start.col:ncol(pollen_ts)]
+    # meta_pol  = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
+    #                             (pollen_ts[, age_col] <= tmax)),1:(taxa.start.col-1)]
+    # counts = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
+    #                          (pollen_ts[, age_col] <= tmax)),taxa.start.col:ncol(pollen_ts)]
+    meta_pol  = pollen_ts[which(pollen_ts[, age_col] <= tmax),1:(taxa.start.col-1)]
+    counts = pollen_ts[which(pollen_ts[, age_col] <= tmax),taxa.start.col:ncol(pollen_ts)]
   
     meta_pol = data.frame(meta_pol, age=rep(NA, nrow(meta_pol)))
-    meta_agg = matrix(NA, nrow=0, ncol=ncol(meta_pol))
-    colnames(meta_agg) = colnames(meta_pol)
+    
+    meta_agg = matrix(NA, nrow=0, ncol=7)
+    colnames(meta_agg) = colnames(meta_pol)[1:7]
   
     counts_agg = matrix(NA, nrow=0, ncol=ncol(counts))
     colnames(counts_agg) = colnames(counts)
+    
+    meta_all = matrix(NA, nrow=0, ncol=ncol(meta_pol))
+    colnames(meta_all) = colnames(meta_pol)
   
     ids = unique(meta_pol$id)
     ncores = length(ids)
   
     for (i in 1:ncores){
+      
+      print(i)
       
       #print(i)
       core_rows = which(meta_pol$id == ids[i])
@@ -589,23 +748,39 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
         
           counts_agg = rbind(counts_agg, colSums(counts[age_rows, ]))
         
-          meta_agg      = rbind(meta_agg, meta_pol[core_rows[1],])
-          meta_agg$age[nrow(meta_agg)] = age/100
+          meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows,1:7], age=age/100))
+          
+          meta_all_row = data.frame(meta_pol[age_rows,])
+          meta_all_row$age = rep(age/100)
+          meta_all = rbind(meta_all, meta_all_row)
         
       } else if (length(age_rows) == 1){
         
           counts_agg = rbind(counts_agg, counts[age_rows, ])
         
-          meta_agg      = rbind(meta_agg, meta_pol[core_rows[1],])
-          meta_agg$age[nrow(meta_agg)] = age/100
+          meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows,1:7], age=rep(age/100)))
+          # meta_agg$age[nrow(meta_agg)] = age/100
+          
+          meta_all_row = data.frame(meta_pol[age_rows,])
+          meta_all_row$age = rep(age/100)
+          meta_all = rbind(meta_all, meta_all_row)
           
       } else if (length(age_rows) == 0){
           
           #FIX ME
           counts_agg = rbind(counts_agg, rep(0,ncol(counts_agg)))
         
-          meta_agg      = rbind(meta_agg, meta_pol[core_rows[1],])
-          meta_agg$age[nrow(meta_agg)] = age/100
+          meta_row = meta_pol[core_rows[1],1:7]
+          meta_agg      = rbind(meta_agg, data.frame(meta_row, age=age/100))
+          # meta_agg$age[nrow(meta_agg)] = age/100
+          
+          meta_all_row = data.frame(meta_pol[core_rows[1],])
+          meta_all_row$age = NA
+          meta_all_row$age_bacon = NA
+          meta_all_row$age_default = NA
+          
+          meta_all = rbind(meta_all, meta_all_row)
+         
         }
       
       }
@@ -614,7 +789,7 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
 
 #   counts = counts_agg
 #   meta_pol = meta_agg
-  return(list(counts_agg, meta_agg)) 
+  return(list(counts_agg, meta_agg, meta_all)) 
 }
 
 
@@ -703,37 +878,39 @@ return(idx_cores)
 # build the weight matrix
 build_weight_matrix <- function(post, d, idx_cores, N, N_cores, run){
   
+  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
+  
   KW     = FALSE
   kernel = run$kernel
-  phi    = colMeans(post[,1,which(par_names == 'phi')])[1:K]
+  phi    = post[which(par_names == 'phi')][1:K]
   
   if (kernel=='gaussian'){
     one_psi = run$one_psi
     if (one_psi){
       #       psi   = rep(mean(post[,1,which(par_names == 'psi')]), K)
-      psi = mean(post[,1,which(par_names == 'psi')])
+      psi = post[which(par_names == 'psi')]
     } else {
       KW  = TRUE
-      psi = colMeans(post[,1,which(par_names == 'psi')])
+      psi = post[which(par_names == 'psi')]
     }
   } else if (kernel=='pl'){
     one_a = run$one_a
     if (one_a){
       #       a = rep(mean(post[,1,which(par_names == 'a')]), K)
-      a = mean(post[,1,which(par_names == 'a')])
+      a = post[which(par_names == 'a')]
     } else {
       KW = TRUE
-      a  = colMeans(post[,1,which(par_names == 'a')])
+      a  = post[which(par_names == 'a')]
     }
     
     one_b = run$one_b
     if (one_b){
       #       b = rep(mean(post[,1,which(par_names == 'b')]), K)
-      b = mean(post[,1,which(par_names == 'b')])
+      b = post[which(par_names == 'b')]
       if (KW) b = rep(b, K)
     } else {
       KW = TRUE
-      b  = colMeans(post[,1,which(par_names == 'b')])
+      b  = post[which(par_names == 'b')]
     }
   }
   
@@ -783,6 +960,90 @@ build_weight_matrix <- function(post, d, idx_cores, N, N_cores, run){
   return(w)
 }
 
+# 
+# # build the weight matrix
+# build_weight_matrix <- function(post, d, idx_cores, N, N_cores, run){
+#   
+#   KW     = FALSE
+#   kernel = run$kernel
+#   phi    = colMeans(post[,1,which(par_names == 'phi')])[1:K]
+#   
+#   if (kernel=='gaussian'){
+#     one_psi = run$one_psi
+#     if (one_psi){
+#       #       psi   = rep(mean(post[,1,which(par_names == 'psi')]), K)
+#       psi = mean(post[,1,which(par_names == 'psi')])
+#     } else {
+#       KW  = TRUE
+#       psi = colMeans(post[,1,which(par_names == 'psi')])
+#     }
+#   } else if (kernel=='pl'){
+#     one_a = run$one_a
+#     if (one_a){
+#       #       a = rep(mean(post[,1,which(par_names == 'a')]), K)
+#       a = mean(post[,1,which(par_names == 'a')])
+#     } else {
+#       KW = TRUE
+#       a  = colMeans(post[,1,which(par_names == 'a')])
+#     }
+#     
+#     one_b = run$one_b
+#     if (one_b){
+#       #       b = rep(mean(post[,1,which(par_names == 'b')]), K)
+#       b = mean(post[,1,which(par_names == 'b')])
+#       if (KW) b = rep(b, K)
+#     } else {
+#       KW = TRUE
+#       b  = colMeans(post[,1,which(par_names == 'b')])
+#     }
+#   }
+#   
+#   if (KW){
+#     w = array(0, c(K, N_cores, N))
+#     for (k in 1:K){
+#       print(paste0('k = ', k))
+#       for (i in 1:N_cores){
+#         for (j in 1:N){ 
+#           if (j != idx_cores[i]){
+#             if (kernel == 'gaussian'){
+#               w[k,i,j] = exp(-(d[i,j]*d[i,j])/(psi[k]*psi[k]))
+#             } else if (kernel == 'pl'){
+#               w[k,i,j] = (b[k]-1) * (b[k]-2) / (2 * pi * a[k]  * a[k]) * (1 + d[i,j] / a[k]) ^ (-b[k])
+#             }
+#           } 
+#         }
+#       }
+#     }
+#   } else {
+#     w = array(0, c(N_cores, N))
+#     for (i in 1:N_cores){
+#       for (j in 1:N){ 
+#         #           if (j != idx_cores[i]){
+#         if (kernel == 'gaussian'){
+#           w[i,j] = exp(-(d[i,j]*d[i,j])/(psi*psi))
+#         } else if (kernel == 'pl'){
+#           w[i,j] = (b-1) * (b-2) / (2 * pi * a  * a) * (1 + d[i,j] / a) ^ (-b)
+#         }
+#         #           } 
+#       }
+#     }
+#   }
+#   
+#   
+#   #   for (i in 1:N_cores){
+#   #     for (j in 1:N){
+#   #       print(paste0("i = ", i))
+#   #       print(j)
+#   #       if ( d[idx_cores[i],j] > 0 ) {
+#   #         w[i,j] <- exp(-(d[idx_cores[i],j]/psi)^2)
+#   #       } 
+#   #     }
+#   #   }
+#   
+#   
+#   return(w)
+# }
+
 
 # build the total potential neighborhood weighting
 build_sumw_pot <- function(post, K, N_pot, d_pot, run){
@@ -791,18 +1052,17 @@ build_sumw_pot <- function(post, K, N_pot, d_pot, run){
   
   KW = FALSE
   kernel = run$kernel
-  
-  col_names = colnames(post[,1,])
-  par_names  = unlist(lapply(col_names, function(x) strsplit(x, "\\[")[[1]][1]))
+
+  par_names  = unlist(lapply(names(post), function(x) strsplit(x, "\\[")[[1]][1]))
   
   if (kernel=='gaussian'){
     one_psi = run$one_psi
     if (one_psi){
 #       psi   = rep(mean(post[,1,which(par_names == 'psi')]), K)
-      psi = mean(post[,1,which(par_names == 'psi')])
+      psi = post[which(par_names == 'psi')]
     } else {
       KW  = TRUE
-      psi = colMeans(post[,1,which(par_names == 'psi')])
+      psi = post[which(par_names == 'psi')]
     }
     
     if (KW){
@@ -818,18 +1078,18 @@ build_sumw_pot <- function(post, K, N_pot, d_pot, run){
     one_b = run$one_b
     if (one_a){
 #       a = rep(mean(post[,1,which(par_names == 'a')]), K)
-      a = mean(post[,1,which(par_names == 'a')])
+      a = post[which(par_names == 'a')]
     } else {
       KW = TRUE
-      a = colMeans(post[,1,which(par_names == 'a')])
+      a = post[which(par_names == 'a')]
     }
     if (one_b){
 #       b = rep(mean(post[,1,which(par_names == 'b')]), K)
-      b = mean(post[,1,which(par_names == 'b')])
+      b = post[which(par_names == 'b')]
       if (KW) b = rep(b, K)
     } else {
       KW = TRUE
-      b = colMeans(post[,1,which(par_names == 'b')])
+      b  = post[which(par_names == 'b')]
     }
 
     if (KW){
@@ -1172,7 +1432,7 @@ pred_build_inits_mut2 <- function(K, N, N_knots, eta, rho, mu_t, tau, d_knots, d
   return(list(alpha_init=alpha_init, g_init=g_init))
 }
 
-pred_build_inits_full <- function(K, N, N_knots, eta, rho, mu, mu_t, tau, d_knots, d_inter, lag){
+pred_build_inits_full <- function(K, N, N_knots, eta, rho, mu, mu_t, tau=0.1, d_knots, d_inter, lag){
   
   bt = TRUE
   
@@ -1241,19 +1501,22 @@ pred_build_inits_full <- function(K, N, N_knots, eta, rho, mu, mu_t, tau, d_knot
     
     for (i in 1:N){
       print(i)
-      sqrt_var = sqrt(cvar[i])
+      sqrt_var = sqrt(cvar[i] + tau)
       print(sqrt_var)
       
+      
       if (sqrt_var > 0){
-        g_init[k,(i-1)*T+1] = rnorm(1, mu[k] + mu_t[k, 1] + Halpha_s[i,1], sd=sqrt_var)
+        # g_init[k,(i-1)*T+1] = rnorm(1, mu[k] + mu_t[k, 1] + Halpha_s[i,1], sd=sqrt_var)
+        g_init[k,(i-1)*T+1] = rnorm(1, mu[k] + Halpha_s[i,1], sd=sqrt_var)
       } else if (sqrt_var == 0) {
-        g_init[k,(i-1)*T+1] = mu[k] + mu_t[k, 1] + Halpha_s[i,1]
+        # g_init[k,(i-1)*T+1] = mu[k] + mu_t[k, 1] + Halpha_s[i,1]
+        g_init[k,(i-1)*T+1] = mu[k] + Halpha_s[i,1]
       }
         
-      sqrt_var = sqrt(cvar[i] + qvar[i])
+      sqrt_var = sqrt(cvar[i] + qvar[i] + tau)
       for (t in 2:T){
         if (sqrt_var > 0){
-          g_init[k,(i-1)*T+t] = rnorm(1, mu[k] + mu_t[k, t] + Halpha_s[i,1] + Halpha_t[k,i,t-1], sd=sqrt_var)
+          g_init[k,(i-1)*T+t] = rnorm(1, mu[k] + mu_t[k, t-1] + Halpha_s[i,1] + Halpha_t[k,i,t-1], sd=sqrt_var)
         } else if (sqrt_var == 0){
           g_init[k,(i-1)*T+t] = mu[k] + mu_t[k, t] + Halpha_s[i,1] + Halpha_t[k,i,t-1]
         }
@@ -1265,6 +1528,217 @@ pred_build_inits_full <- function(K, N, N_knots, eta, rho, mu, mu_t, tau, d_knot
   return(list(alpha_s_init=alpha_s_init, alpha_t_init=alpha_t_init, g_init=g_init))
 }
 
+
+pred_build_inits_ar <- function(K, N, N_knots, eta, rho, omega, mu, mu_t, tau=0.1, d_knots, d_inter, lag){
+  
+  bt = TRUE
+  
+  if (length(rho) == K){
+    bt = FALSE
+    W = K
+  } else {
+    W = K-1
+  }
+  
+  alpha_s_init <- matrix(0, nrow=W, ncol=N_knots)
+  alpha_t_init <- matrix(0, nrow=W*T, ncol=N_knots)
+  g_init       <- matrix(0, nrow=W, ncol=N*T)
+  
+  Halpha_s <- matrix(0, nrow=N, ncol=1)
+  Halpha_t <- array(0, c(K, N, T))
+  
+  if (length(eta) < (K-1)){
+    eta = rep(eta, W)
+  }
+  
+  if (length(rho) < (K-1)){
+    rho = rep(rho, W)
+  }
+  
+  for (k in 1:W){  
+    print(paste0("k=", k))
+    
+    C_s = exp(-d_knots/rho[k]) # construct spatial covariance matrix
+    c_s = exp(-d_inter/rho[k])
+    
+    C_s_inv = chol2inv(chol(C_s))
+    
+    alpha_s_init[k,] = rmvnorm(n=1, mean=rep(0,N_knots), sigma=eta[k] * eta[k] * C_s)
+    
+    alpha_t_init[(k-1)*T+1,] = rmvnorm(n=1, mean=rep(0,N_knots), sigma=C_s)
+    for (t in 2:T)
+      alpha_t_init[(k-1)*T+t,] = rmvnorm(n=1, mean=omega[k] * alpha_t_init[(k-1)*T+t-1,], sigma=(1 - omega[k] * omega[k]) * C_s)
+    
+    Halpha_s = c_s %*% C_s_inv %*% matrix(alpha_s_init[k,])
+    
+    for (t in 1:T){
+      Halpha_t[k, , t] = c_s %*% C_s_inv %*% matrix(alpha_t_init[(k-1)*T+t,])  
+    }
+    
+    allvar = diag(c_s %*% C_s_inv %*% t(c_s))
+    cvar    = eta[k]^2 - eta[k]^2 * allvar
+    qvar    = (1 - omega[k] * omega[k]) - (1 - omega[k] * omega[k]) * allvar
+    
+    cvar[abs(cvar) < 1e-8] = 0
+    qvar[abs(qvar) < 1e-8] = 0
+    
+    for (i in 1:N){
+      sqrt_var = sqrt(cvar[i] + tau)
+      
+      if (sqrt_var > 0){
+        # g_init[k,(i-1)*T+1] = rnorm(1, mu[k] + mu_t[k, 1] + Halpha_s[i,1], sd=sqrt_var)
+        g_init[k,(i-1)*T+1] = rnorm(1, mu[k] + Halpha_s[i,1] + Halpha_t[k,i,t], sd=sqrt_var)
+      } else if (sqrt_var == 0) {
+        # g_init[k,(i-1)*T+1] = mu[k] + mu_t[k, 1] + Halpha_s[i,1]
+        g_init[k,(i-1)*T+1] = mu[k] + Halpha_s[i,1]
+      }
+      
+      sqrt_var = sqrt(cvar[i] + qvar[i] + tau)
+      for (t in 2:T){
+        if (sqrt_var > 0){
+          g_init[k,(i-1)*T+t] = rnorm(1, mu[k] + mu_t[k, t-1] + Halpha_s[i,1] + Halpha_t[k,i,t], sd=sqrt_var)
+        } else if (sqrt_var == 0){
+          g_init[k,(i-1)*T+t] = mu[k] + mu_t[k, t] + Halpha_s[i,1] + Halpha_t[k,i,t]
+        }
+      }
+    }
+    
+  }
+  
+  return(list(alpha_s_init=alpha_s_init, alpha_t_init=alpha_t_init, g_init=g_init))
+}
+
+
+pred_build_inits_space <- function(K, N, N_knots, eta, rho, mu, mu_t, tau=0.1, d_knots, d_inter, lag, 
+                                   alpha_s_init, alpha_t_init){
+  
+  bt = TRUE
+  
+  if (length(rho) == K){
+    bt = FALSE
+    W = K
+  } else {
+    W = K-1
+  }
+  
+  g_init   <- matrix(0, nrow=W, ncol=N*T)
+  
+  Halpha_s <- matrix(0, nrow=N, ncol=1)
+  Halpha_t <- array(0, c(K, N, T-1))
+  
+  ones     = matrix(1, nrow=N, ncol=1)
+  temp = qr(ones)
+  Q    = qr.Q(temp)
+  P = Q %*% t(Q)
+  
+  if (length(eta) < (K-1)){
+    eta = rep(eta, W)
+  }
+  
+  if (length(rho) < (K-1)){
+    rho = rep(rho, W)
+  }
+  
+  for (k in 1:W){  
+    print(paste0("k=", k))
+    
+    C_s = exp(-d_knots/rho[k]) # construct spatial covariance matrix
+    c_s = exp(-d_inter/rho[k])
+    
+    C_s_inv = chol2inv(chol(C_s))
+    
+    Q_s = exp(-d_knots/lambda[k]) # construct innovation covariance matrix
+    q_s = exp(-d_inter/lambda[k])
+    
+    Q_s_inv = chol2inv(chol(Q_s))
+    
+    Halpha_s = (c_s %*% C_s_inv - P %*% c_s %*% C_s_inv) %*% matrix(alpha_s_init[k,])
+    
+    for (t in 1:(T-1)){
+      Halpha_t[k, , t] = q_s %*% Q_s_inv %*% matrix(alpha_t_init[(k-1)*(T-1)+t,])  
+    }
+    
+    cvar    = eta[k]^2 - eta[k]^2 * diag(c_s %*% C_s_inv %*% t(c_s))
+    qvar    = sigma[k]^2 - sigma[k]^2 * diag(q_s %*% Q_s_inv %*% t(q_s))
+    
+    cvar[abs(cvar) < 1e-8] = 0
+    qvar[abs(qvar) < 1e-8] = 0
+    
+    for (i in 1:N){
+      print(i)
+      
+      sqrt_var = sqrt(cvar[i] + tau)
+      g_init[k,(i-1)*T+1] = rnorm(1, mu[k] + Halpha_s[i,1], sd=sqrt_var)
+
+      sqrt_var = sqrt(cvar[i] + qvar[i] + tau)
+      for (t in 2:T){
+        g_init[k,(i-1)*T+t] = rnorm(1, mu[k] + mu_t[k, t-1] + Halpha_s[i,1] + Halpha_t[k,i,t-1], sd=sqrt_var)
+      }
+    }
+    
+  }
+  
+  return(g_init)
+}
+
+space_g_init_ar <- function(K, N, N_knots, eta, rho, omega, mu, mu_t, tau=0.1, d_knots, d_inter,
+                            alpha_s_init, alpha_t_init){
+  
+  W = K-1
+  
+  g_init   <- matrix(0, nrow=W, ncol=N*T)
+  Halpha_s <- matrix(0, nrow=N, ncol=1)
+  Halpha_t <- array(0, c(K, N, T))
+  
+  ones     = matrix(1, nrow=N, ncol=1)
+  temp = qr(ones)
+  Q    = qr.Q(temp)
+  P = Q %*% t(Q)
+  
+  if (length(eta) < (K-1)){
+    eta = rep(eta, W)
+  }
+  
+  if (length(rho) < (K-1)){
+    rho = rep(rho, W)
+  }
+  
+  for (k in 1:W){  
+    print(paste0("k=", k))
+    
+    C_s = exp(-d_knots/rho[k]) # construct spatial covariance matrix
+    c_s = exp(-d_inter/rho[k])
+    
+    C_s_inv = chol2inv(chol(C_s))
+    
+    Halpha_s = (c_s %*% C_s_inv - P %*% c_s %*% C_s_inv) %*% matrix(alpha_s_init[k,])
+    
+    for (t in 1:T){
+      Halpha_t[k, , t] = c_s %*% C_s_inv %*% matrix(alpha_t_init[(k-1)*T+t,])  
+    }
+    
+    cvar    = eta[k]^2 - eta[k]^2 * diag(c_s %*% C_s_inv %*% t(c_s))
+    qvar    = (1-omega[k]^2)*(1 - diag(c_s %*% C_s_inv %*% t(c_s)))
+    
+    cvar[abs(cvar) < 1e-8] = 0
+    qvar[abs(qvar) < 1e-8] = 0
+    
+    for (i in 1:N){
+      print(i)
+      
+      sqrt_var = sqrt(cvar[i] + tau)
+      g_init[k,(i-1)*T+1] = rnorm(1, mu[k] + Halpha_s[i,1] + Halpha_t[k,i,1], sd=sqrt_var)
+      
+      sqrt_var = sqrt(cvar[i] + qvar[i] + tau)
+      for (t in 2:T){
+        g_init[k,(i-1)*T+t] = rnorm(1, mu[k] + mu_t[k, t-1] + Halpha_s[i,1] + Halpha_t[k,i,t], sd=sqrt_var)
+      }
+    }
+    
+  }
+  
+  return(g_init)
+}
 
 build_alpha_init_v2 <- function(W, N_knots, T, rho, tau, eta, d_knots, lag){
   
@@ -1460,10 +1934,12 @@ cores_near_domain <-function(knots, cells, cell_width){
 
 convert_counts <- function(counts, tree_type, taxa_sub){
   
+  colnames(counts) = toupper(colnames(counts))
+  
   y_veg = data.frame(counts[, colnames(counts) %in% taxa_sub])
   
   left = rownames(tree_type)[!(rownames(tree_type) %in% taxa_sub)]
-  taxa_other_hw = rownames(tree_type)[which(tree_type$type == 'HW')]
+  taxa_other_hw  = rownames(tree_type)[which(tree_type$type == 'HW')]
   taxa_other_con = rownames(tree_type)[which(tree_type$type == 'CON')]
   
   if (sum(left %in% taxa_other_hw) > 1){
@@ -1494,6 +1970,10 @@ split_mi <- function(meta){
   centers_ll <- spTransform(centers, CRS('+proj=longlat +ellps=WGS84'))
   centers_ll <- as.matrix(data.frame(centers_ll))
   
+  if (!any(colnames(meta) == 'state')) {
+    meta$state = map.where(database='state', centers_ll[,1], centers_ll[,2])
+  }
+  
   idx.mi = which(meta$state=='michigan_north')
   meta$state2 = as.vector(meta$state)
   meta$state2[idx.mi] = map.where(database="state", centers_ll[idx.mi,1], centers_ll[idx.mi,2])
@@ -1515,6 +1995,14 @@ split_mi <- function(meta){
   
   meta$state2[which(meta$state2[idx.mi]=='minnesota')] = 'michigan:north'
   
+  if (any(meta$state2 %in% c('illinois', 'indiana', 'ohio', 'iowa', 'north dakota', 'south dakota'))) {
+    meta$state2[which(meta$state2 == 'illinois')] = 'wisconsin'
+    meta$state2[which(meta$state2 %in% c('indiana', 'ohio'))] = 'michigan:south'
+    meta$state2[which((meta$state2 == 'iowa') & (meta$x > 370000))] = 'wisconsin'
+    meta$state2[which((meta$state2 == 'iowa') & (meta$x < 370000))] = 'minnesota'
+    meta$state2[which(meta$state2 %in% c('north dakota', 'south dakota'))] = 'minnesota'
+  }
+  
   return(meta)
   
 }
@@ -1523,7 +2011,7 @@ get_quants <- function(post, npars){
   
 #   quants <- colMeans(post[,1,1:npars])
   
-  quants <- t(apply(post[,1,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975))))
+  quants <- t(apply(post[,1:npars], 2, function(x) quantile(x, probs=c(0.025, 0.5, 0.975))))
   
 #   quants <- cbind(summary(fit)$summary[,'mean'][1:npars],
 #                   summary(fit)$summary[,'2.5%'][1:(npars)],
@@ -2129,3 +2617,325 @@ monitor <- function(sims, warmup = 0,# floor(dim(sims)[1] / 2),
   } 
   invisible(summary) 
 } 
+
+
+# load_cell <- function(dir_name, id, T, K) {
+#   #fname = sprintf('output/%s.bin', run$suff_fit)
+#   fname = paste0(dir_name, '/output.bin')
+#   bin      = file(fname, "rb")
+#   nwarmup  = readBin(bin, "integer")
+#   nsamples = readBin(bin, "integer")
+#   nparams  = readBin(bin, "integer")
+#   
+#   # seek to start of parameter names
+#   seek(bin, where=(nsamples+nwarmup)*nparams*4, origin="current")
+#   params    = readBin(bin, "character", n=nparams)
+#   par_names = readBin(bin, "character", n=nparams)
+#   
+#   # find first parameter
+#   pcol0 = 1
+#   for (i in 1:10) {
+#     if (grepl("__", params[i], fixed=TRUE) == FALSE) {
+#       pcol0 = i
+#       break
+#     }
+#   }
+#   
+#   params = params[pcol0:length(params)]
+#   par_names = par_names[pcol0:length(par_names)]
+#   
+#   #   # get T, W
+#   #   load(paste0(dir_name, '/input.rdata'))
+#   W = K-1  
+#   
+#   # figure out which columns we want (cols)
+#   g_cols    = which(par_names == 'g')
+#   col0      = g_cols[(id-1)*T*W + 1]
+#   ncols     = T*W
+#   
+#   # save start of samples
+#   start = 3*4 + nwarmup*nparams*4
+#   
+#   # read appropriate columns
+#   out = array(NA, dim=c(nsamples, ncols))
+#   for (row in 1:nsamples) {
+#     seek(bin, where=start+nparams*(row-1)*4+(pcol0+col0-2)*4, origin="start")
+#     out[row,] = readBin(bin, "numeric", n=ncols, size=4)
+#   }
+#   colnames(out) <- params[col0:(col0+ncols-1)]
+#   close(bin)
+#   
+#   out
+# }
+
+# # functions
+# build_r_cell <- function(g_cell, N, T, K){
+#   
+#   W       = K-1
+#   niter   = nrow(g_cell) 
+#   
+#   gc      = array(NA, dim=c(T, W, niter))
+#   rc      = array(NA, dim=c(T, K, niter))
+#   
+#   for (k in 1:W){
+#     #print(k)
+#     
+#     g_k_cols = seq(k, T*W, by=W)
+#     gc[,k,]   = t(g_cell[,g_k_cols])    
+#   }
+#   
+#   for (i in 1:niter){
+#     
+#     #if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
+#     
+#     sum_exp_g = rowSums(exp(gc[,,i]))
+#     
+#     rc[,,i] <- sum2one_constraint_cell(K, N, T, as.matrix(gc[,,i]), sum_exp_g) 
+#   }
+#   
+#   return(list(rc=rc, gc=gc))
+# }
+
+# r[,,i] <- sum2one_constraint_cell(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+# additive log_ratio transformation
+cppFunction('
+  NumericMatrix sum2one_constraint_cell(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
+    //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
+    NumericMatrix r(T, K);
+    for (int k = 0; k<(K-1); k++)
+      for (int j = 0; j<T; j++)
+        r(j,k) = exp(g(j,k))/(1+sum_exp_g(j));
+
+    for (int j = 0; j<T; j++)
+      r(j,K-1) = 1.0 / (1 + sum_exp_g[j]);
+   
+return r;
+  }
+', verbose=TRUE, showOutput=TRUE)
+
+cbind_matrices <- function(l) {
+  m = matrix(0, nrow=0, ncol=ncol(l[[1]]))
+  for (i in 1:length(l))
+    m <- rbind(m, l[[i]])
+  m
+}
+
+
+# functions
+build_r_cell <- function(g_cell, N, T, K){
+  
+  W = K
+  # W       = K-1
+  niter   = nrow(g_cell) 
+  
+  gc      = array(NA, dim=c(T, W, niter))
+  rc      = array(NA, dim=c(T, K, niter))
+  
+  for (k in 1:W){
+    print(k)
+    
+    g_k_cols = seq(k, T*W, by=W)
+    gc[,k,]   = t(g_cell[,g_k_cols])    
+  }
+  
+  for (i in 1:niter){
+    
+    if ( (i %% 200) == 0 ) { print(paste0("Iteration ", i))}
+    
+    sum_exp_g = rowSums(exp(gc[,,i]))
+    
+    rc[,,i] <- sum2one_constraint_cell_nb(K, N, T, as.matrix(gc[,,i]), sum_exp_g) 
+  }
+  
+  return(list(rc=rc, gc=gc))
+}
+
+
+
+# r[,,i] <- sum2one_constraint_cell(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+# additive log_ratio transformation
+cppFunction('
+            NumericMatrix sum2one_constraint_cell(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
+            //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
+            NumericMatrix r(T, K);
+            for (int k = 0; k<(K-1); k++)
+            for (int j = 0; j<T; j++)
+            r(j,k) = exp(g(j,k))/(1+sum_exp_g(j));
+            
+            for (int j = 0; j<T; j++)
+            r(j,K-1) = 1.0 / (1 + sum_exp_g[j]);
+            
+            return r;
+            }
+            ', verbose=TRUE)
+
+# r[,,i] <- sum2one_constraint_cell(K, N, T, as.matrix(g[,,i]), sum_exp_g) 
+# additive log_ratio transformation
+cppFunction('
+            NumericMatrix sum2one_constraint_cell_nb(int K, int N, int T, NumericMatrix g, NumericVector sum_exp_g) {
+            //std::cout << "K " << K << "; N " << N << "; T " << T << std::endl; 
+            NumericMatrix r(T, K);
+            for (int k = 0; k<K; k++)
+            for (int j = 0; j<T; j++)
+            r(j,k) = exp(g(j,k))/(1+sum_exp_g(j));
+            return r;
+            }
+            ', verbose=TRUE)
+
+load_cell <- function(run, cell_id, T, K) {
+  #fname = sprintf('output/%s.bin', run$suff_fit)
+  fname = sprintf('runs/%s/run1/output.bin', run$suff_run)
+  bin      = file(fname, "rb")
+  magic    = readBin(bin, "integer")  
+  nwarmup  = readBin(bin, "integer")
+  nsamples = readBin(bin, "integer")
+  nparams  = readBin(bin, "integer")
+  ndiag    = readBin(bin, "integer")
+  
+  if (magic > 0) {
+    stop(paste0("Can't read ", fname, ": unexpected magic number (probably an old stan2bin file)."))
+  }
+  
+  # seek to start of parameter names
+  seek(bin, where=(nwarmup*nparams+1+ndiag+nsamples*nparams)*4, origin="current")
+  params    = readBin(bin, "character", n=nparams)
+  par_names = readBin(bin, "character", n=nparams)
+  
+  # find first parameter
+  pcol0 = 1
+  for (i in 1:10) {
+    if (grepl("__", params[i], fixed=TRUE) == FALSE) {
+      pcol0 = i
+      break
+    }
+  }
+  
+  params = params[pcol0:length(params)]
+  par_names = par_names[pcol0:length(par_names)]
+  
+  # get T, W
+  load(sprintf('runs/%s/run1/input.rdata', run$suff_run))
+  W = K  
+  
+  # figure out which columns we want (cols)
+  g_cols    = which(par_names == 'g')
+  col0      = g_cols[(cell_id-1)*T*W + 1]
+  ncols     = T*W
+  
+  # save start of samples
+  start = 5*4 + (nwarmup*nparams+1+ndiag)*4
+  
+  # read appropriate columns
+  out = array(NA, dim=c(nsamples, ncols))
+  for (row in 1:nsamples) {
+    seek(bin, where=start+nparams*(row-1)*4+(pcol0+col0-2)*4, origin="start")
+    out[row,] = readBin(bin, "numeric", n=ncols, size=4)
+  }
+  colnames(out) <- params[col0:(col0+ncols-1)]
+  close(bin)
+  
+  out
+}
+
+
+
+############################################################################################################################################
+## constrain pollen bacon ages
+## only keep samples that are presettlement or older
+## if no presettlement sample, keep 150 ybp or older
+############################################################################################################################################
+
+remove_post_settlement <- function(pollen, age_ps){
+  
+  # age_ps
+  ids = unique(pollen$id)
+  ncores = length(unique(pollen$id))
+  
+  pollen_ps = data.frame(matrix(NA, nrow=0, ncol=ncol(pollen))) 
+  colnames(pollen_ps) = colnames(pollen)
+  for (i in 1:ncores){
+
+    pol_site = pollen[pollen$id == ids[i],]
+    
+    if (any(age_ps$id == ids[i])) {
+      pol_site = pol_site[which(pol_site$depth >= age_ps$depth[which(age_ps$id == ids[i])]),]
+    } else {
+      pol_site = pol_site[pol_site$age_bacon >= 150, ]
+    }
+    
+    pollen_ps = rbind(pollen_ps, pol_site)
+  }
+  
+  if (any(pollen_ps$age_bacon <= 0)){
+    pollen_ps$age_bacon[which(pollen_ps$age_bacon <= 0)] = 1
+  }
+  
+  return(pollen_ps)
+}
+
+
+# drop the pollen samples that are 500 years older than the oldest geochron date
+constrain_pollen <- function(pollen, age_con, nbeyond=1000){
+  
+  drop_samples = vector(length=nrow(pollen))
+  for (i in 1:nrow(pollen)){
+    
+    idx = match(pollen$id[i], age_con$id)
+    
+    if (is.na(idx)){
+      print(paste0(i, ' WTF'))
+      print(pollen$id[i])
+    }
+    
+    drop_samples[i] = pollen$age_bacon[i] > (age_con$geo_age_max[idx] + nbeyond)
+  }
+  
+  return(drop_samples)
+}
+
+
+##
+## predicted pollen based on weighted neighborhoods using estimated pars
+## 
+pollen_preds_sp <- function(phi, gamma, w, sum_w, d, idx_cores, r){
+  
+  K       = dim(w)[1]
+  N_cells = dim(w)[3]
+  N_cores = dim(w)[2]
+  
+  T = dim(r)[3]
+  
+  r_new = array(NA, c(N_cores, K, T))
+  preds = array(NA, c(N_cores, K, T))
+  
+  for (i in 1:N_cores){
+    for (t in 1:T){
+      print(i)
+      
+      out_sum = rep(0, K)
+      for (k in 1:K){
+        print(paste0('k = ', k))
+        # pl_p1 = (b[k]-1) * (b[k]-2) / (2 * pi * a[k]  * a[k]) 
+        
+        for (j in 1:N_cells){ # changed N_hood to N_locs
+          if (j != idx_cores[i]){
+            # w = pl_p1 * (1 + d[j,i] / a[k]) ^ (-b[k])
+            out_sum[k] <- out_sum[k] + w[k,i,j] * r[j,k,t]
+          }  
+        }
+      }
+      
+      for (k in 1:K){
+        r_new[i,k,t]  = gamma[k]*r[idx_cores[i],k,t] + (1-gamma[k])*out_sum[k]/sum_w[k]
+        preds[i,k,t]  = phi[k]*r_new[i,k,t]        
+      }
+    }
+  }
+  
+  # alpha = rowSums(preds)   
+  
+  #convert to proportions
+  preds = apply(preds, c(1,3), function(x) x/sum(x))
+  
+  return(preds=preds)
+}
