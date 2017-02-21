@@ -14,17 +14,6 @@ source('r/utils/pred_helper_funs.r')
 # user defs
 ######################################################################################################################################
 
-# stat model flags
-decomp     = TRUE
-bt         = TRUE
-mpp        = TRUE
-save_plots = TRUE
-
-bacon = TRUE
-# draw  = TRUE
-add_varves = TRUE
-constrain = FALSE
-
 # us albers shape file
 # us.shp <- readShapeLines('attic/r/data/map_data/us_alb.shp',
 #                          proj4string=CRS('+init=epsg:3175'))
@@ -51,7 +40,7 @@ gridname = paste0(grid_specs, '_v', grid_version)
 #gridname = 'umwE_3by'
 
 # reconstruction limits and bin-width
-int  = 1000
+int  = 100
 tmin = 150
 if (cal) {
   tmax = 150
@@ -65,9 +54,6 @@ if (cal) {
 # rescale
 rescale = 1e6
 
-# how far to extrapolate past last geochron anchor
-nbeyond = 1000
-
 # knots
 # nclust = 75
 # clust.ratio = 6# approx clust.ratio knots per cell
@@ -77,9 +63,6 @@ clust.ratio = 15# approx clust.ratio knots per cell
 # suff=''
 suff    = paste(grid_specs, '_', version, sep='') 
 # suff = '3by_v0.3_test'
-
-# states_pol = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
-# states_pls = c('minnesota', 'wisconsin', 'michigan:north', 'michigan:south')
 
 states_pol = c('minnesota', 'wisconsin', 'michigan:north')
 states_pls = c('minnesota', 'wisconsin', 'michigan:north')
@@ -91,8 +74,6 @@ states_pls = c('minnesota', 'wisconsin', 'michigan:north')
 
 taxa_all = toupper(c('oak', 'pine', 'maple', 'birch', 'tamarack', 'beech', 'elm', 'spruce', 'ash', 'hemlock'))
 taxa_sub = toupper(c('oak', 'pine', 'maple', 'birch', 'tamarack', 'beech', 'elm', 'spruce', 'ash', 'hemlock'))
-#taxa_sub = toupper(c('oak', 'pine', 'maple', 'birch', 'tamarack', 'beech'))#, 'elm', 'spruce', 'ash', 'hemlock'))
-# taxa_sub = toupper(c('oak', 'pine', 'maple', 'birch'))
 
 K = as.integer(length(taxa_sub) + 1)
 W = K-1
@@ -107,12 +88,13 @@ path_grid = paste('data/grid/', gridname, '.rdata', sep='')
 path_pls      = '../stepps-data/data/composition/pls/pls_umw_v0.6.csv'
 # path_pollen   = '../stepps-data/data/bacon_ages/pollen_ts_bacon_meta_v8.csv'
 # path_bacon    = '../stepps-data/data/bacon_ages'
-path_pollen   = '../stepps-baconizing/data/sediment_ages_v6.csv'
+path_pollen   = '../stepps-baconizing/data/sediment_ages_v7_varves.csv'
+# path_pollen   = '../stepps-baconizing/data/sediment_ages_v7.csv'
 
 if (bchron){
   path_age_samples    = '../stepps-baconizing/data/bchron_ages'
 } else {
-  path_age_samples    = '../stepps-baconizing/data/bchron_ages'
+  path_age_samples    = '../stepps-baconizing/data/bacon_ages'
 }
 path_cal      = paste0('../stepps-calibration/output/', run$suff_fit,'.csv')
 path_veg_data = paste0('../stepps-veg/r/dump/veg_data_', suff_veg, '_v0.4.rdata')
@@ -151,13 +133,20 @@ if (draw) {
   }
 }
 
-age_ps = read.table(file=paste0(path_ages, '/pol_age_ps_v6.csv'), sep=',', header=TRUE)
-# foo = remove_post_settlement(pollen_ts, age_ps)
-pollen_ts = remove_post_settlement(pollen_ts, age_ps)
-
 if (bchron){
   pollen_ts = pollen_ts[!is.na(pollen_ts$age_bchron),]
+} else {
+  pollen_ts = pollen_ts[!is.na(pollen_ts$age_bacon),]
 }
+
+age_ps = read.table(file=paste0(path_ages, '/pol_age_ps_v7.csv'), sep=',', header=TRUE)
+# foo = remove_post_settlement(pollen_ts, age_ps)
+
+# only removes samples that were clearly identified as post-settlement
+# if no ambrosia rise, includes all samples
+pollen_ts = remove_post_settlement(pollen_ts, age_ps)
+
+
 
 # if (any(pollen_ts$age_bacon < 0)) {
 #   tmin = 0
@@ -316,12 +305,14 @@ plot(centers_veg$x*rescale, centers_veg$y*rescale)
 points(pollen_ts3$x*rescale, pollen_ts3$y*rescale, col='blue', pch=19)
 plot(us.shp, add=T, lwd=2)
 
+# points(pollen_ts3$x[which(pollen_ts3$id %in% vids)]*rescale, pollen_ts3$y[which(pollen_ts3$id %in% vids)]*rescale, col='red')
+
 ##########################################################################################################################
 ## chunk: prepare pollen data; aggregate over time intervals
 ##########################################################################################################################
 
 # sum counts over int length intervals
-pollen_agg = build_pollen_counts(tmin=tmin, tmax=tmax, int=int, pollen_ts=pollen_ts3, taxa_all, taxa_sub, age_model='bchron')
+pollen_agg = build_pollen_counts(tmin=tmin, tmax=tmax, int=int, pollen_ts=pollen_ts3, taxa_all, taxa_sub, age_model=age_model)
 #pollen_agg = build_pollen_counts_fast_core(tmin=tmin, tmax=tmax, int=int, pollen_ts=pollen_ts)
 
 # saveRDS(pollen_ts3, file=paste0(subDir, '/pollen_meta.RDS'))
@@ -648,47 +639,6 @@ dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
     # file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
 
 ##########################################################################################################################
-## build initial conditions for full
-##########################################################################################################################
-# if (!one_time) {
-#   
-#   tau   = 0.1
-#   ksi   = 0.1
-#   
-#   if (bt) {L=W} else {L=K}
-#   mu    = rep(0,L)
-#   sigma = rep(0.1,L)
-#   omega = rep(0.9,L)
-#   
-#   # if (lambda_fixed=FALSE){
-#   lambda = rho
-#   omega = rep(0.9,L)
-#   # }
-#   
-#   mu_t = array(0, dim=c(W, T-1))
-#   for (k in 1:W){
-#     mu_t[k,1] = rnorm(1, mean=0, sd=ksi)
-#     for (i in 2:(T-1)){
-#       mu_t[k,i] = rnorm(1, mean = mu_t[k, i-1], sd = ksi)     
-#     }
-#   }
-#   
-#   if (AR){
-#     inits = pred_build_inits_ar(K, N, N_knots, eta, rho, omega, mu, mu_t, tau, d_knots, d_inter, lag)
-#   } else{
-#     inits = pred_build_inits_full(K, N, N_knots, eta, rho, mu, mu_t, tau, d_knots, d_inter, lag)
-#   }
-#   alpha_s = inits$alpha_s_init
-#   alpha_t = inits$alpha_t_init
-#   g       = inits$g_init
-#   
-#   # eta   = 1#rep(1, W) 
-#   
-#   dump(c('tau', 'ksi', 'sigma', 'lambda', 'omega', 'mu', 'mu_t', 'alpha_s', 'alpha_t', 'g'), 
-#        file=paste(fname, '_inits.dump',sep=""))
-# }
-
-##########################################################################################################################
 ## write meta file with paths
 ##########################################################################################################################
 
@@ -708,103 +658,3 @@ if (dr==1){
   }
   close(con=conn)
 }
-# ##########################################################################################################################
-# ## if base model copy gamma and w
-# ##########################################################################################################################
-# if ( (!KGAMMA) & (!KW) ) { 
-#   suff = paste0('COPY_', suff)
-#   
-#   gamma = rep(gamma, K)
-#   sum_w_pot = rep(sum_w_pot, K)
-#   
-# #   w_new = vector(length=K*N_cores*N)
-# #   for (j in 1:N)
-# #     for (i in 1:N_cores)
-# #       for (k in 1:K)
-# #         w_new[(k-1)*N*N_cores + (i-1)*N + j] = w[i, j]
-# # #   
-# #   w_new = array(0, c(K, N_cores, N))
-# #   for (k in 1:K){
-# #     w_new[k,,] = w
-# #   }
-#   
-#   w = array(rep(as.vector(w), K), c(K, N_cores, N))
-#   
-#   dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
-#          'gamma', 'psi', 'phi', 'rho', 'eta',
-#          'y', 
-#          'idx_cores', 
-#          'd', 'd_knots', 'd_inter', 'w',
-#          'lag',
-#          #        'P', 'N_p', 'sum_w_pot'),
-#          'sum_w_pot'),#, 'pollen_check'),
-#        #        'knot_coords',
-#        #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
-#        file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
-#   
-#   save(K, N, T, N_cores, N_knots, res,
-#        gamma, psi, phi, rho, eta,
-#        y, 
-#        idx_cores, 
-#        d, d_knots, d_inter, w,
-#        lag,
-#        #        P, N_p, sum_w_pot,
-#        sum_w_pot, pollen_check,
-#        knot_coords,
-#        centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
-#        file=paste('r/dump/', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
-#   
-# }
-# 
-# # dump(c('K', 'N', 'T', 'N_cores', 'N_knots', 'res',
-# #        'gamma', 'psi', 'phi', 'rho', 'eta',
-# #        'y', 
-# #        'idx_cores', 
-# #        'd', 'd_knots', 'd_inter', 'w',
-# #        'lag',
-# # #        'P', 'N_p', 'sum_w_pot'),
-# #         'sum_w_pot', 'pollen_check'),
-# # #        'knot_coords',
-# # #        'centers_pls', 'centers_veg', 'centers_polU', 'taxa', 'ages', 'y_veg', 'N_pls'), 
-# #      file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.dump',sep=""))
-# # 
-# # save(K, N, T, N_cores, N_knots, res,
-# #        gamma, psi, phi, rho, eta,
-# #        y, 
-# #        idx_cores, 
-# #        d, d_knots, d_inter, w,
-# #        lag,
-# # #        P, N_p, sum_w_pot,
-# #        sum_w_pot, pollen_check,
-# #        knot_coords,
-# #        centers_pls, centers_veg, centers_pol, taxa, ages, y_veg, N_pls,
-# #        file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 'ypb_', suff, '.rdata',sep=""))
-
-# ##########################################################################################################################
-# ## build initial conditions
-# ##########################################################################################################################
-# 
-# tau   = 150
-# mu    = rep(0,W) 
-# omega = 0.5
-# ksi   = 0.1
-# 
-# mu_t = array(0, dim=c(W, T))
-# for (k in 1:W){
-#   mu_t[k,1] = rnorm(1, mean= mu[k], sd= sqrt((ksi * ksi)/(1 - omega * omega)))
-#   for (i in 2:T){
-#     mu_t[k,i] = rnorm(1, mean = mu[k] + omega * mu_t[k, i-1], sd = ksi)     
-#   }
-# }
-# 
-# # alpha = build_alpha_init(W, N_knots, T, rep(rho,W), tau, rep(eta,W), d_knots, lag)
-# inits = pred_build_inits(K, N, N_knots, eta, rho, mu, tau, d_knots, d_inter, lag)
-# alpha = inits$alpha_init
-# g     = inits$g_init
-# 
-# # eta   = 1#rep(1, W) 
-# 
-# dump(c('tau', 'mu', 'omega', 'ksi', 'mu_t', 'alpha', 'g'), 
-#      file=paste('r/dump/pred_data_', K, 'taxa_', N, 'cells_', N_knots, 'knots_', tmin, 'to', tmax, 
-#                 'ypb_', suff, '_inits.dump',sep=""))
-# 

@@ -6,12 +6,28 @@ sides = c('')
 version="v2.1"
 AR     = TRUE
 cal    = FALSE
-draw   = FALSE
+draw   = TRUE
 ndraws = 10
 nknots = 120
 one_time=FALSE
 lambda_fixed = TRUE
-bchron = TRUE
+bchron = FALSE
+
+
+# stat model flags
+decomp     = TRUE
+bt         = TRUE
+mpp        = TRUE
+save_plots = TRUE
+
+bacon = TRUE
+# draw  = TRUE
+add_varves = TRUE
+constrain  = FALSE
+# how far to extrapolate past last geochron anchor
+nbeyond = 1000
+
+age_model  = 'bacon'
 
 suff_dat = '12taxa_mid_comp_ALL_v0.3'
 
