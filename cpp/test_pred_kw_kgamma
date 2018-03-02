@@ -1,5 +1,0 @@
-#! /bin/sh
-
-CASE=$1 
-
-./$CASE.exe sample num_samples=5 num_warmup=5 data file=../r/dump/12taxa_699cells_120knots_0to2000ypb_KW_KGAMMA_PL_umw_3by_v0.3.dump output file=$CASE.csv random seed=42
