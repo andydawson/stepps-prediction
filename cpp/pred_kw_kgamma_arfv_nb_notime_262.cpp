@@ -1202,8 +1202,8 @@ public:
                                  bool include_tparams__ = true,
                                  bool include_gqs__ = true) const {
         std::stringstream param_name_stream__;
-        param_name_stream__.str(std::string());
-        param_names__.push_back(param_name_stream__.str());
+        //param_name_stream__.str(std::string());
+        //param_names__.push_back(param_name_stream__.str());
         for (int k_0__ = 1; k_0__ <= K; ++k_0__) {
             param_name_stream__.str(std::string());
             param_name_stream__ << "mu" << '.' << k_0__;
@@ -1234,7 +1234,7 @@ public:
                                    bool include_tparams__ = true,
                                    bool include_gqs__ = true) const {
         std::stringstream param_name_stream__;
-        param_name_stream__.str(std::string());
+        //param_name_stream__.str(std::string());
         for (int k_0__ = 1; k_0__ <= K; ++k_0__) {
             param_name_stream__.str(std::string());
             param_name_stream__ << "mu" << '.' << k_0__;
