@@ -1111,7 +1111,6 @@ public:
 
     void write_csv_header(std::ostream& o__) const {
         stan::io::csv_writer writer__(o__);
-        writer__.comma();
         for (int k_0__ = 1; k_0__ <= K; ++k_0__) {
             writer__.comma();
             o__ << "mu" << '.' << k_0__;
