@@ -694,33 +694,26 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
   }
   
   taxa.start.col = min(match(taxa_all, colnames(pollen_ts)), na.rm=TRUE)
-  # 
-  # pls_dat  = pls.raw[,taxa.start.col:ncol(pls.raw)]
-  # colnames(pls_dat) = as.vector(convert[match(colnames(pls_dat), tolower(rownames(convert))),1])
-  # pls_dat_collapse  = sapply(unique(colnames(pls_dat)), 
-  #                            function(x) rowSums( pls_dat[ , grep(x, names(pls_dat)), drop=FALSE]) )
-  # counts = data.frame(pls_dat_collapse[,sort(colnames(pls_dat_collapse))])
-  # meta   = pls.raw[,1:(taxa.start.col-1)]
-  
+
   if (int > 0){
     #   breaks = seq(0,2500,by=int)
     breaks = seq(tmin,tmax,by=int)
-    breaks[1] = min(pollen_ts$age_bacon)
+    # breaks[1] = min(pollen_ts$age_bacon)
   
-    # meta_pol  = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
-    #                             (pollen_ts[, age_col] <= tmax)),1:(taxa.start.col-1)]
-    # counts = pollen_ts[which((pollen_ts[, age_col] >= tmin) & 
-    #                          (pollen_ts[, age_col] <= tmax)),taxa.start.col:ncol(pollen_ts)]
-    meta_pol  = pollen_ts[which(pollen_ts[, age_col] <= tmax),1:(taxa.start.col-1)]
-    counts = pollen_ts[which(pollen_ts[, age_col] <= tmax),taxa.start.col:ncol(pollen_ts)]
-  
+    meta_pol  = pollen_ts[which((pollen_ts[, age_col] >= tmin) &
+                                (pollen_ts[, age_col] <= tmax)),1:(taxa.start.col-1)]
+    counts = pollen_ts[which((pollen_ts[, age_col] >= tmin) &
+                             (pollen_ts[, age_col] <= tmax)),taxa.start.col:ncol(pollen_ts)]
+    # meta_pol  = pollen_ts[which(pollen_ts[, age_col] <= tmax),1:(taxa.start.col-1)]
+    # counts = pollen_ts[which(pollen_ts[, age_col] <= tmax),taxa.start.col:ncol(pollen_ts)]
+    
     meta_pol = data.frame(meta_pol, age=rep(NA, nrow(meta_pol)))
     
-    meta_agg = matrix(NA, nrow=0, ncol=7)
-    colnames(meta_agg) = colnames(meta_pol)[1:7]
-  
     counts_agg = matrix(NA, nrow=0, ncol=ncol(counts))
     colnames(counts_agg) = colnames(counts)
+    
+    meta_agg = matrix(NA, nrow=0, ncol=6)
+    colnames(meta_agg) = colnames(meta_pol)[1:6]
     
     meta_all = matrix(NA, nrow=0, ncol=ncol(meta_pol))
     colnames(meta_all) = colnames(meta_pol)
@@ -748,7 +741,7 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
         
           counts_agg = rbind(counts_agg, colSums(counts[age_rows, ]))
         
-          meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows,1:7], age=age/100))
+          meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows[1],1:6], age=age/100, zero=FALSE))
           
           meta_all_row = data.frame(meta_pol[age_rows,])
           meta_all_row$age = rep(age/100)
@@ -758,7 +751,7 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
         
           counts_agg = rbind(counts_agg, counts[age_rows, ])
         
-          meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows,1:7], age=rep(age/100)))
+          meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows,1:6], age=rep(age/100), zero=FALSE))
           # meta_agg$age[nrow(meta_agg)] = age/100
           
           meta_all_row = data.frame(meta_pol[age_rows,])
@@ -770,8 +763,8 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
           #FIX ME
           counts_agg = rbind(counts_agg, rep(0,ncol(counts_agg)))
         
-          meta_row = meta_pol[core_rows[1],1:7]
-          meta_agg      = rbind(meta_agg, data.frame(meta_row, age=age/100))
+          meta_row = meta_pol[core_rows[1],1:6]
+          meta_agg      = rbind(meta_agg, data.frame(meta_row, age=age/100, zero=TRUE))
           # meta_agg$age[nrow(meta_agg)] = age/100
           
           meta_all_row = data.frame(meta_pol[core_rows[1],])
@@ -785,6 +778,88 @@ build_pollen_counts <- function(tmin, tmax, int, pollen_ts, taxa_all, taxa_sub, 
       
       }
     }
+  # } else if (int==0){
+  #   breaks = seq(tmin,tmax,by=int)
+  #   # breaks[1] = min(pollen_ts$age_bacon)
+  #   
+  #   meta_pol  = pollen_ts[which((pollen_ts[, age_col] >= tmin) &
+  #                                 (pollen_ts[, age_col] <= tmax)),1:(taxa.start.col-1)]
+  #   counts = pollen_ts[which((pollen_ts[, age_col] >= tmin) &
+  #                              (pollen_ts[, age_col] <= tmax)),taxa.start.col:ncol(pollen_ts)]
+  #   # meta_pol  = pollen_ts[which(pollen_ts[, age_col] <= tmax),1:(taxa.start.col-1)]
+  #   # counts = pollen_ts[which(pollen_ts[, age_col] <= tmax),taxa.start.col:ncol(pollen_ts)]
+  #   
+  #   meta_pol = data.frame(meta_pol, age=rep(NA, nrow(meta_pol)))
+  #   
+  #   counts_agg = matrix(NA, nrow=0, ncol=ncol(counts))
+  #   colnames(counts_agg) = colnames(counts)
+  #   
+  #   meta_agg = matrix(NA, nrow=0, ncol=6)
+  #   colnames(meta_agg) = colnames(meta_pol)[1:6]
+  #   
+  #   meta_all = matrix(NA, nrow=0, ncol=ncol(meta_pol))
+  #   colnames(meta_all) = colnames(meta_pol)
+  #   
+  #   ids = unique(meta_pol$id)
+  #   ncores = length(ids)
+  #   
+  #   for (i in 1:ncores){
+  #     
+  #     print(i)
+  #     
+  #     #print(i)
+  #     core_rows = which(meta_pol$id == ids[i])
+  #     #     core_counts = counts[core_rows,]
+  #     
+  #     for (j in 1:(length(breaks)-1)){
+  #       
+  #       #print(j)
+  #       age = breaks[j] + int/2
+  #       
+  #       age_rows = core_rows[(meta_pol[core_rows, age_col] >= breaks[j]) & 
+  #                              (meta_pol[core_rows, age_col] < breaks[j+1])]
+  #       
+  #       if (length(age_rows)>1){
+  #         
+  #         counts_agg = rbind(counts_agg, colSums(counts[age_rows, ]))
+  #         
+  #         meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows[1],1:6], age=age/100, zero=FALSE))
+  #         
+  #         meta_all_row = data.frame(meta_pol[age_rows,])
+  #         meta_all_row$age = rep(age/100)
+  #         meta_all = rbind(meta_all, meta_all_row)
+  #         
+  #       } else if (length(age_rows) == 1){
+  #         
+  #         counts_agg = rbind(counts_agg, counts[age_rows, ])
+  #         
+  #         meta_agg      = rbind(meta_agg, data.frame(meta_pol[age_rows,1:6], age=rep(age/100), zero=FALSE))
+  #         # meta_agg$age[nrow(meta_agg)] = age/100
+  #         
+  #         meta_all_row = data.frame(meta_pol[age_rows,])
+  #         meta_all_row$age = rep(age/100)
+  #         meta_all = rbind(meta_all, meta_all_row)
+  #         
+  #       } else if (length(age_rows) == 0){
+  #         
+  #         #FIX ME
+  #         counts_agg = rbind(counts_agg, rep(0,ncol(counts_agg)))
+  #         
+  #         meta_row = meta_pol[core_rows[1],1:6]
+  #         meta_agg      = rbind(meta_agg, data.frame(meta_row, age=age/100, zero=TRUE))
+  #         # meta_agg$age[nrow(meta_agg)] = age/100
+  #         
+  #         meta_all_row = data.frame(meta_pol[core_rows[1],])
+  #         meta_all_row$age = NA
+  #         meta_all_row$age_bacon = NA
+  #         meta_all_row$age_default = NA
+  #         
+  #         meta_all = rbind(meta_all, meta_all_row)
+  #         
+  #       }
+  #       
+  #     }
+  #   }
    }
 
 #   counts = counts_agg
@@ -2857,8 +2932,8 @@ remove_post_settlement <- function(pollen, age_ps){
 
     pol_site = pollen[pollen$id == ids[i],]
     
-    if (any(age_ps$id == ids[i])) {
-      pol_site = pol_site[which(pol_site$depth >= age_ps$depth[which(age_ps$id == ids[i])]),]
+    if ((any(age_ps$id == ids[i])) & (all(!is.na(pol_site$depth)))) {
+      pol_site = pol_site[which(pol_site$depth >= age_ps$set_depth[which(age_ps$id == ids[i])]),]
     } else {
       pol_site = pol_site[pol_site$age_bacon >= 150, ]
     }
@@ -2875,7 +2950,7 @@ remove_post_settlement <- function(pollen, age_ps){
 
 
 # drop the pollen samples that are 500 years older than the oldest geochron date
-constrain_pollen <- function(pollen, age_con, nbeyond=1000){
+constrain_pollen <- function(pollen, age_con, nbeyond){
   
   drop_samples = vector(length=nrow(pollen))
   for (i in 1:nrow(pollen)){
